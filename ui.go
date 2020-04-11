@@ -13,8 +13,25 @@ func BuildUI(ui *js.Object, layout *js.Object) {
 	root := zUI.MakeCanvas("", 1280, 800).Root()
 
 	mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
+	statusBar := zUI.MakeStatusBarPan("statusBar", 6)
+
+	statusText := zUI.MakeLabel("statusText", "Ready")
+	statusBar.Add("left", &statusText.Layoutable)
+
+	tree := zUI.MakeTree("tree", map[string]interface{}{
+		"value": "Root",
+		"kids": []interface{}{
+			"Item 1",
+			"Item 2",
+		},
+	}, true)
 
 	textArea := zUI.MakeTextArea("textArea", "A text ... ")
+
+	splitPan := zUI.MakeSplitPan("splitPan", &tree.Panel, &textArea.Panel, "vertical")
+	splitPan.SetLeftMinSize(250)
+	splitPan.SetRightMinSize(250)
+	splitPan.SetGripperLoc(300)
 
 	button := zUI.MakeButton("button", "Clear")
 	button.PointerReleased(func(e *js.Object) {
@@ -27,9 +44,10 @@ func BuildUI(ui *js.Object, layout *js.Object) {
 		"padding": 8,
 		"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
 		"kids": map[string]interface{}{
+			"right":  button.Object(),
 			"top":    mainMenu.Object(),
-			"center": textArea.Object(),
-			"bottom": button.Object(),
+			"center": splitPan.Object(),
+			"bottom": statusBar.Object(),
 		},
 	})
 

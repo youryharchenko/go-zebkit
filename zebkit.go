@@ -65,6 +65,14 @@ func (ui *UI) MakeMenuBar(id string, list []interface{}) (mb *MenuBar) {
 	return
 }
 
+// MakeStatusBarPan -
+func (ui *UI) MakeStatusBarPan(id string, gap int) (sb *StatusBarPan) {
+	o := ui.Obj.Get("StatusBarPan").New(gap)
+	setID(o, id)
+	sb = NewStatusBarPan(o)
+	return
+}
+
 // MakeMenuItem -
 func (ui *UI) MakeMenuItem(item map[string]interface{}) (mi *MenuItem) {
 	o := ui.Obj.Get("MenuItem").New(item)
@@ -80,11 +88,35 @@ func (ui *UI) MakeButton(id string, text string) (c *Button) {
 	return
 }
 
+// MakeLabel -
+func (ui *UI) MakeLabel(id string, r interface{}) (l *Label) {
+	o := ui.Obj.Get("Label").New(r)
+	setID(o, id)
+	l = NewLabel(o)
+	return
+}
+
 // MakeTextArea -
 func (ui *UI) MakeTextArea(id string, text string) (c *TextArea) {
 	o := ui.Obj.Get("TextArea").New(text)
 	setID(o, id)
 	c = NewTextArea(o)
+	return
+}
+
+// MakeSplitPan -
+func (ui *UI) MakeSplitPan(id string, first *Panel, second *Panel, orient string) (c *SplitPan) {
+	o := ui.Obj.Get("SplitPan").New(first.Object(), second.Object(), orient)
+	setID(o, id)
+	c = NewSplitPan(o)
+	return
+}
+
+// MakeTree -
+func (ui *UI) MakeTree(id string, model interface{}, b bool) (t *Tree) {
+	o := ui.Obj.Get("tree").Get("Tree").New(model, b)
+	setID(o, id)
+	t = NewTree(o)
 	return
 }
 
@@ -178,6 +210,11 @@ func (l *Layoutable) ByPath(path string, arg interface{}) (o *js.Object) {
 	return
 }
 
+// Add -
+func (l *Layoutable) Add(constr interface{}, d *Layoutable) {
+	l.Object().Call("add", constr, d.Object())
+}
+
 // Properties -
 func (l *Layoutable) Properties(path string, props map[string]interface{}) {
 	if len(path) == 0 {
@@ -202,6 +239,33 @@ func NewPanel(obj *js.Object) (p *Panel) {
 // Load -
 func (p *Panel) Load(filepath string) {
 	p.Obj.Call("load", filepath)
+}
+
+// SplitPan -
+type SplitPan struct {
+	Panel
+}
+
+// NewSplitPan -
+func NewSplitPan(obj *js.Object) (sp *SplitPan) {
+	sp = &SplitPan{}
+	sp.Obj = obj
+	return
+}
+
+// SetLeftMinSize -
+func (sp *SplitPan) SetLeftMinSize(m int) {
+	sp.Object().Call("setLeftMinSize", m)
+}
+
+// SetRightMinSize -
+func (sp *SplitPan) SetRightMinSize(m int) {
+	sp.Object().Call("setRightMinSize", m)
+}
+
+// SetGripperLoc -
+func (sp *SplitPan) SetGripperLoc(l int) {
+	sp.Object().Call("setGripperLoc", l)
 }
 
 // ViewPan -
@@ -236,15 +300,22 @@ type Button struct {
 }
 
 // NewButton -
-func NewButton(obj *js.Object) (ta *Button) {
-	ta = &Button{}
-	ta.Obj = obj
+func NewButton(obj *js.Object) (b *Button) {
+	b = &Button{}
+	b.Obj = obj
 	return
 }
 
 // Label -
 type Label struct {
 	ViewPan
+}
+
+// NewLabel -
+func NewLabel(obj *js.Object) (l *Label) {
+	l = &Label{}
+	l.Obj = obj
+	return
 }
 
 // TextField -
@@ -312,5 +383,34 @@ type MenuItem struct {
 func NewMenuItem(obj *js.Object) (mi *MenuItem) {
 	mi = &MenuItem{}
 	mi.Obj = obj
+	return
+}
+
+// StatusBarPan -
+type StatusBarPan struct {
+	Panel
+}
+
+// NewStatusBarPan -
+func NewStatusBarPan(obj *js.Object) (sb *StatusBarPan) {
+	sb = &StatusBarPan{}
+	sb.Obj = obj
+	return
+}
+
+// BaseTree -
+type BaseTree struct {
+	Panel
+}
+
+// Tree -
+type Tree struct {
+	BaseTree
+}
+
+// NewTree -
+func NewTree(obj *js.Object) (t *Tree) {
+	t = &Tree{}
+	t.Obj = obj
 	return
 }
