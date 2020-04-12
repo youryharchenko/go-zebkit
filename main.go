@@ -11,5 +11,5 @@ func init() {
 
 func main() {
 	zebkit.UIConfig("theme", "light")
-	zebkit.Require("ui", "layout", BuildUI)
+	zebkit.Require("ui", "layout", "data", BuildUI)
 }

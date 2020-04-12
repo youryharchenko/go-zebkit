@@ -26,21 +26,32 @@ func (zk *Zebkit) Require(args ...interface{}) {
 	zk.Obj.Call("require", args...)
 }
 
-// UI -
-type UI struct {
+// GetPropertyValue -
+func (zk *Zebkit) GetPropertyValue(obj *js.Object, path string, useGetter bool) (o *js.Object) {
+	o = zk.Obj.Call("getPropertyValue", obj, path, useGetter)
+	return
+}
+
+// IsAtomic -
+func (zk *Zebkit) IsAtomic(obj *js.Object) bool {
+	return zk.Obj.Call("isAtomic", obj).Bool()
+}
+
+// PkgUI -
+type PkgUI struct {
 	Obj *js.Object
 }
 
-// NewUI -
-func NewUI(obj *js.Object) (ui *UI) {
-	ui = &UI{
+// NewPkgUI -
+func NewPkgUI(obj *js.Object) (ui *PkgUI) {
+	ui = &PkgUI{
 		Obj: obj,
 	}
 	return ui
 }
 
 // MakeCanvas -
-func (ui *UI) MakeCanvas(name string, w int, h int) (c *Canvas) {
+func (ui *PkgUI) MakeCanvas(name string, w int, h int) (c *Canvas) {
 	o := ui.Obj.Get("zCanvas")
 	if len(name) == 0 {
 		c = NewCanvas(o.New(w, h))
@@ -52,7 +63,7 @@ func (ui *UI) MakeCanvas(name string, w int, h int) (c *Canvas) {
 }
 
 // MakeMenu -
-func (ui *UI) MakeMenu(id string, list []interface{}) (m *Menu) {
+func (ui *PkgUI) MakeMenu(id string, list []interface{}) (m *Menu) {
 	o := ui.Obj.Get("Menu").New(list)
 	setID(o, id)
 	m = NewMenu(o)
@@ -60,7 +71,7 @@ func (ui *UI) MakeMenu(id string, list []interface{}) (m *Menu) {
 }
 
 // MakeMenuBar -
-func (ui *UI) MakeMenuBar(id string, list []interface{}) (mb *MenuBar) {
+func (ui *PkgUI) MakeMenuBar(id string, list []interface{}) (mb *MenuBar) {
 	o := ui.Obj.Get("Menubar").New(list)
 	setID(o, id)
 	mb = NewMenuBar(o)
@@ -68,7 +79,7 @@ func (ui *UI) MakeMenuBar(id string, list []interface{}) (mb *MenuBar) {
 }
 
 // MakeStatusBarPan -
-func (ui *UI) MakeStatusBarPan(id string, gap int) (sb *StatusBarPan) {
+func (ui *PkgUI) MakeStatusBarPan(id string, gap int) (sb *StatusBarPan) {
 	o := ui.Obj.Get("StatusBarPan").New(gap)
 	setID(o, id)
 	sb = NewStatusBarPan(o)
@@ -76,14 +87,14 @@ func (ui *UI) MakeStatusBarPan(id string, gap int) (sb *StatusBarPan) {
 }
 
 // MakeMenuItem -
-func (ui *UI) MakeMenuItem(item map[string]interface{}) (mi *MenuItem) {
+func (ui *PkgUI) MakeMenuItem(item map[string]interface{}) (mi *MenuItem) {
 	o := ui.Obj.Get("MenuItem").New(item)
 	mi = NewMenuItem(o)
 	return
 }
 
 // MakeButton -
-func (ui *UI) MakeButton(id string, text string) (c *Button) {
+func (ui *PkgUI) MakeButton(id string, text string) (c *Button) {
 	o := ui.Obj.Get("Button").New(text)
 	setID(o, id)
 	c = NewButton(o)
@@ -91,7 +102,7 @@ func (ui *UI) MakeButton(id string, text string) (c *Button) {
 }
 
 // MakeLabel -
-func (ui *UI) MakeLabel(id string, r interface{}) (l *Label) {
+func (ui *PkgUI) MakeLabel(id string, r interface{}) (l *Label) {
 	o := ui.Obj.Get("Label").New(r)
 	setID(o, id)
 	l = NewLabel(o)
@@ -99,7 +110,7 @@ func (ui *UI) MakeLabel(id string, r interface{}) (l *Label) {
 }
 
 // MakeTextArea -
-func (ui *UI) MakeTextArea(id string, text string) (c *TextArea) {
+func (ui *PkgUI) MakeTextArea(id string, text string) (c *TextArea) {
 	o := ui.Obj.Get("TextArea").New(text)
 	setID(o, id)
 	c = NewTextArea(o)
@@ -107,7 +118,7 @@ func (ui *UI) MakeTextArea(id string, text string) (c *TextArea) {
 }
 
 // MakeSplitPan -
-func (ui *UI) MakeSplitPan(id string, first *Panel, second *Panel, orient string) (c *SplitPan) {
+func (ui *PkgUI) MakeSplitPan(id string, first *Panel, second *Panel, orient string) (c *SplitPan) {
 	o := ui.Obj.Get("SplitPan").New(first.Object(), second.Object(), orient)
 	setID(o, id)
 	c = NewSplitPan(o)
@@ -115,48 +126,81 @@ func (ui *UI) MakeSplitPan(id string, first *Panel, second *Panel, orient string
 }
 
 // MakeTree -
-func (ui *UI) MakeTree(id string, model interface{}, b bool) (t *Tree) {
-	o := ui.Obj.Get("tree").Get("Tree").New(model, b)
+func (ui *PkgUI) MakeTree(id string, model *TreeModel, b bool) (t *Tree) {
+	o := ui.Obj.Get("tree").Get("Tree").New(model.Object(), b)
 	setID(o, id)
 	t = NewTree(o)
 	return
 }
 
-// Layout -
-type Layout struct {
+// MakeTabs -
+func (ui *PkgUI) MakeTabs(id string, orient string) (t *Tabs) {
+	o := ui.Obj.Get("Tabs").New(orient)
+	setID(o, id)
+	t = NewTabs(o)
+	return
+}
+
+// PkgLayout -
+type PkgLayout struct {
 	Obj *js.Object
 }
 
-// NewLayout -
-func NewLayout(obj *js.Object) (lo *Layout) {
-	lo = &Layout{
+// NewPkgLayout -
+func NewPkgLayout(obj *js.Object) (lo *PkgLayout) {
+	lo = &PkgLayout{
 		Obj: obj,
 	}
 	return lo
 }
 
-// Object -
-func (lo *Layout) Object() (o *js.Object) {
-	o = lo.Obj
+// MakeBorderLayout -
+func (lo *PkgLayout) MakeBorderLayout(hgap int, vgap int) (l *BorderLayout) {
+	o := lo.Obj.Get("BorderLayout").New(hgap, vgap)
+	l = NewBorderLayout(o)
 	return
 }
 
-// MakeBorderLayout -
-func (lo *Layout) MakeBorderLayout(hgap int, vgap int) (l *BorderLayout) {
-	o := lo.Object().Get("BorderLayout").New(hgap, vgap)
-	l = NewBorderLayout(o)
+// PkgData -
+type PkgData struct {
+	Obj *js.Object
+}
+
+// NewPkgData -
+func NewPkgData(obj *js.Object) (d *PkgData) {
+	d = &PkgData{
+		Obj: obj,
+	}
+	return d
+}
+
+// MakeTreeModel -
+func (d *PkgData) MakeTreeModel(arg interface{}) (tm *TreeModel) {
+	o := d.Obj.Get("TreeModel").New(arg)
+	tm = NewTreeModel(o)
 	return
+}
+
+// Layout -
+type Layout interface {
 }
 
 // BorderLayout -
 type BorderLayout struct {
 	Layout
+	Obj *js.Object
 }
 
 // NewBorderLayout -
 func NewBorderLayout(obj *js.Object) (l *BorderLayout) {
 	l = &BorderLayout{}
 	l.Obj = obj
+	return
+}
+
+// Object -
+func (bl *BorderLayout) Object() (o *js.Object) {
+	o = bl.Obj
 	return
 }
 
@@ -186,6 +230,7 @@ type PathSearch interface {
 // Layoutable -
 type Layoutable struct {
 	PathSearch
+	EventProducer
 	Obj *js.Object
 }
 
@@ -425,4 +470,46 @@ func NewTree(obj *js.Object) (t *Tree) {
 	t = &Tree{}
 	t.Obj = obj
 	return
+}
+
+// Tabs -
+type Tabs struct {
+	Panel
+	EventProducer
+}
+
+// NewTabs -
+func NewTabs(obj *js.Object) (t *Tabs) {
+	t = &Tabs{}
+	t.Obj = obj
+	return
+}
+
+// DataModel -
+type DataModel interface {
+	Object() *js.Object
+}
+
+// TreeModel -
+type TreeModel struct {
+	DataModel
+	EventProducer
+	Obj *js.Object
+}
+
+// NewTreeModel -
+func NewTreeModel(obj *js.Object) (tm *TreeModel) {
+	tm = &TreeModel{}
+	tm.Obj = obj
+	return
+}
+
+// Object -
+func (tm *TreeModel) Object() (o *js.Object) {
+	o = tm.Obj
+	return
+}
+
+// EventProducer -
+type EventProducer interface {
 }

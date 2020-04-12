@@ -7,10 +7,12 @@ import (
 )
 
 // BuildUI -
-func BuildUI(ui *js.Object, layout *js.Object) {
-	zUI, zLayout := NewUI(ui), NewLayout(layout)
+func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
+
+	zUI, zLayout, zData := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data)
 
 	root := zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
+	//inspectObject("root", root.Object(), 0, 1)
 
 	mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
 	statusBar := zUI.MakeStatusBarPan("statusBar", 6)
@@ -18,17 +20,22 @@ func BuildUI(ui *js.Object, layout *js.Object) {
 	statusText := zUI.MakeLabel("statusText", "Ready")
 	statusBar.Add("left", &statusText.Layoutable)
 
-	tree := zUI.MakeTree("tree", map[string]interface{}{
+	treeModel := zData.MakeTreeModel(map[string]interface{}{
 		"value": "Root",
 		"kids": []interface{}{
 			"Item 1",
 			"Item 2",
 		},
-	}, true)
+	})
+	tree := zUI.MakeTree("tree", treeModel, true)
 
-	textArea := zUI.MakeTextArea("textArea", "A text ... ")
+	textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
+	textArea2 := zUI.MakeTextArea("textArea2", "A text2 ... ")
+	tabs := zUI.MakeTabs("tabs", "top")
+	tabs.Add("Text1", &textArea1.Layoutable)
+	tabs.Add("Text2", &textArea2.Layoutable)
 
-	splitPan := zUI.MakeSplitPan("splitPan", &tree.Panel, &textArea.Panel, "vertical")
+	splitPan := zUI.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
 	splitPan.SetLeftMinSize(250)
 	splitPan.SetRightMinSize(250)
 	splitPan.SetGripperLoc(300)
@@ -39,7 +46,7 @@ func BuildUI(ui *js.Object, layout *js.Object) {
 	button := zUI.MakeButton("button", "Clear")
 	button.PointerReleased(func(e *js.Object) {
 		log.Println("Click!", e)
-		NewTextArea(root.ByPath("#textArea", nil)).SetValue("")
+		NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
 	})
 
 	root.Properties("", map[string]interface{}{
