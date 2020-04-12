@@ -1,12 +1,12 @@
 package main
 
 var zebkit *Zebkit
+var innerWidth int
+var innerHeight int
 
 func init() {
-
+	initResize()
 	zebkit = NewZebkit()
-	//log.Println("zebkit", zebkit)
-
 }
 
 func main() {

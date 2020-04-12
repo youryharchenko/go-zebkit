@@ -10,7 +10,7 @@ import (
 func BuildUI(ui *js.Object, layout *js.Object) {
 	zUI, zLayout := NewUI(ui), NewLayout(layout)
 
-	root := zUI.MakeCanvas("", 1280, 800).Root()
+	root := zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
 
 	mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
 	statusBar := zUI.MakeStatusBarPan("statusBar", 6)
@@ -32,6 +32,9 @@ func BuildUI(ui *js.Object, layout *js.Object) {
 	splitPan.SetLeftMinSize(250)
 	splitPan.SetRightMinSize(250)
 	splitPan.SetGripperLoc(300)
+	splitPan.Properties("", map[string]interface{}{
+		"padding": 6,
+	})
 
 	button := zUI.MakeButton("button", "Clear")
 	button.PointerReleased(func(e *js.Object) {

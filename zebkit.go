@@ -4,7 +4,8 @@ import "github.com/gopherjs/gopherjs/js"
 
 // Zebkit -
 type Zebkit struct {
-	Obj *js.Object
+	Obj    *js.Object
+	Canvas *Canvas
 }
 
 // NewZebkit -
@@ -46,6 +47,7 @@ func (ui *UI) MakeCanvas(name string, w int, h int) (c *Canvas) {
 	} else {
 		c = NewCanvas(o.New(name, w, h))
 	}
+	zebkit.Canvas = c
 	return
 }
 
@@ -208,6 +210,16 @@ func (l *Layoutable) ByPath(path string, arg interface{}) (o *js.Object) {
 		o = l.Object().Call("byPath", path, arg)
 	}
 	return
+}
+
+// Resized -
+func (l *Layoutable) Resized(pw int, ph int) {
+	l.Object().Call("resized", pw, ph)
+}
+
+// SetSize -
+func (l *Layoutable) SetSize(w int, h int) {
+	l.Object().Call("setSize", w, h)
 }
 
 // Add -
