@@ -1,6 +1,10 @@
 package main
 
-import "github.com/gopherjs/gopherjs/js"
+import (
+	"log"
+
+	"github.com/gopherjs/gopherjs/js"
+)
 
 // Zebkit -
 type Zebkit struct {
@@ -109,6 +113,14 @@ func (ui *PkgUI) MakeLabel(id string, r interface{}) (l *Label) {
 	return
 }
 
+// MakeTextField -
+func (ui *PkgUI) MakeTextField(id string, r interface{}) (tf *TextField) {
+	o := ui.Obj.Get("TextField").New(r)
+	setID(o, id)
+	tf = NewTextField(o)
+	return
+}
+
 // MakeTextArea -
 func (ui *PkgUI) MakeTextArea(id string, text string) (c *TextArea) {
 	o := ui.Obj.Get("TextArea").New(text)
@@ -138,6 +150,63 @@ func (ui *PkgUI) MakeTabs(id string, orient string) (t *Tabs) {
 	o := ui.Obj.Get("Tabs").New(orient)
 	setID(o, id)
 	t = NewTabs(o)
+	return
+}
+
+// MakeFormLogin -
+func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData) (form *Form) {
+	oPan := ui.Obj.Get("Panel").New()
+	borderLayout := zLayout.MakeBorderLayout(4, 4)
+	content := NewPanel(oPan, borderLayout.Object())
+	oWin := ui.Obj.Get("Window").New("Login", content.Object())
+
+	form = NewForm(oWin)
+
+	oWin.Call("setSizeable", false)
+	oWin.Call("setSize", 300, 225)
+
+	oWin.Get("root").Call("setListLayout", "left", 6)
+
+	userLabel := ui.MakeLabel("userLabel", "User")
+	oWin.Get("root").Call("add", "center", userLabel.Object())
+	userField := ui.MakeTextField("userField", "")
+	userField.SetHint("User name")
+	userField.SetPSByRowsCols(2, 20)
+	userField.SetTextAlignment("left")
+	oWin.Get("root").Call("add", "center", userField.Object())
+
+	pwdLabel := ui.MakeLabel("pwdLabel", "Password")
+	oWin.Get("root").Call("add", "center", pwdLabel.Object())
+	pwdField := ui.MakeTextField("pwdField", "")
+	pwdField.SetHint("Password")
+	pwdField.SetPSByRowsCols(2, 20)
+	pwdField.SetTextAlignment("left")
+	oWin.Get("root").Call("add", "center", pwdField.Object())
+
+	buttonOK := ui.MakeButton("buttonOK", "OK")
+	oWin.Get("root").Call("add", "center", buttonOK.Object())
+	buttonOK.Object().Set("pointerReleased", func(e *js.Object) {
+		log.Println("FormLogin button OK - pointerReleased")
+		log.Println("FormLogin will close")
+		oWin.Call("close")
+		session.Data.User = (&userField.Label).GetValue().String()
+		session.Data.Secret = (&pwdField.Label).GetValue().String()
+		form.ChResult <- FormOk
+	})
+
+	statLabel := ui.MakeLabel("statLabel", "Ready")
+	oWin.Get("status").Call("add", "center", statLabel.Object())
+
+	oWin.Get("buttons").Get("kids").Get("0").Set("pointerReleased", func(e *js.Object) {
+		log.Println("FormLogin button close - pointerReleased")
+		log.Println("FormLogin will close")
+		oWin.Call("close")
+		form.ChResult <- FormClose
+		//inspectObject("event", e, 0, 1)
+	})
+
+	form.SetStatus("Input name, passsword and click OK")
+
 	return
 }
 
@@ -218,7 +287,7 @@ func NewCanvas(obj *js.Object) (c *Canvas) {
 
 // Root -
 func (c *Canvas) Root() (r *Panel) {
-	r = NewPanel(c.Obj.Get("root"))
+	r = NewPanel(c.Obj.Get("root"), nil)
 	return
 }
 
@@ -231,7 +300,8 @@ type PathSearch interface {
 type Layoutable struct {
 	PathSearch
 	EventProducer
-	Obj *js.Object
+	Layout *js.Object
+	Obj    *js.Object
 }
 
 // NewLayoutable -
@@ -269,7 +339,14 @@ func (l *Layoutable) SetSize(w int, h int) {
 
 // Add -
 func (l *Layoutable) Add(constr interface{}, d *Layoutable) {
+	log.Println("Add:", constr)
 	l.Object().Call("add", constr, d.Object())
+}
+
+// SetByConstraints -
+func (l *Layoutable) SetByConstraints(constr interface{}, d *Layoutable) {
+	log.Println("SetByConstraints:", constr)
+	l.Object().Call("setByConstraints", constr, d.Object())
 }
 
 // Properties -
@@ -287,9 +364,10 @@ type Panel struct {
 }
 
 // NewPanel -
-func NewPanel(obj *js.Object) (p *Panel) {
+func NewPanel(obj *js.Object, layout *js.Object) (p *Panel) {
 	p = &Panel{}
 	p.Obj = obj
+	p.Layout = layout
 	return
 }
 
@@ -375,14 +453,42 @@ func NewLabel(obj *js.Object) (l *Label) {
 	return
 }
 
+// GetValue -
+func (l *Label) GetValue() (v *js.Object) {
+	v = l.Object().Call("getValue")
+	return
+}
+
 // TextField -
 type TextField struct {
 	Label
 }
 
+// NewTextField -
+func NewTextField(obj *js.Object) (tf *TextField) {
+	tf = &TextField{}
+	tf.Obj = obj
+	return
+}
+
 // SetValue -
 func (tf *TextField) SetValue(text string) {
 	tf.Object().Call("setValue", text)
+}
+
+// SetHint -
+func (tf *TextField) SetHint(text string) {
+	tf.Object().Call("setHint", text)
+}
+
+// SetPSByRowsCols -
+func (tf *TextField) SetPSByRowsCols(r int, c int) {
+	tf.Object().Call("setPSByRowsCols", r, c)
+}
+
+// SetTextAlignment -
+func (tf *TextField) SetTextAlignment(ax string) {
+	tf.Object().Call("setTextAlignment", ax)
 }
 
 // TextArea -
@@ -482,6 +588,18 @@ type Tabs struct {
 func NewTabs(obj *js.Object) (t *Tabs) {
 	t = &Tabs{}
 	t.Obj = obj
+	return
+}
+
+// Window -
+type Window struct {
+	Panel
+}
+
+// NewWindow -
+func NewWindow(obj *js.Object) (w *Window) {
+	w = &Window{}
+	w.Obj = obj
 	return
 }
 

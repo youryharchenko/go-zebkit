@@ -132,6 +132,8 @@ func JWTSkipper(ctx echo.Context) bool {
 			return true
 		case strings.HasPrefix(p, "/rs/"):
 			return true
+		case strings.HasPrefix(p, "/favicon"):
+			return true
 		}
 	case "POST":
 		switch {

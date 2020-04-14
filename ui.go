@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -9,56 +10,104 @@ import (
 // BuildUI -
 func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 
-	zUI, zLayout, zData := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data)
+	chOk := make(chan bool, 0)
 
+	zUI, zLayout, zData := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data)
 	root := zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
+
 	//inspectObject("root", root.Object(), 0, 1)
 
-	mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
-	statusBar := zUI.MakeStatusBarPan("statusBar", 6)
+	go func() {
+		err := testToken()
+		if err != nil {
+			err := login()
+			if err != nil {
+				log.Printf("Login error: %v", err)
+				formLogin := zUI.MakeFormLogin(zLayout, zData)
+				i := 0
+				for {
+					i++
+					if i > 3 {
+						log.Printf("Used max retries: %v", i)
+						chOk <- false
+						return
+					}
+					res, err := formLogin.RunModal(&root.Layoutable)
+					if err != nil {
+						formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
+						continue
+					}
+					if res == FormOk {
+						err := login()
+						if err != nil {
+							formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
+							continue
+						}
+						break
+					}
+				}
+			}
+		}
+		log.Printf("Token: %v", session.Data.Token)
+		chOk <- true
+	}()
 
-	statusText := zUI.MakeLabel("statusText", "Ready")
-	statusBar.Add("left", &statusText.Layoutable)
+	go func() {
+		b := <-chOk
 
-	treeModel := zData.MakeTreeModel(map[string]interface{}{
-		"value": "Root",
-		"kids": []interface{}{
-			"Item 1",
-			"Item 2",
-		},
-	})
-	tree := zUI.MakeTree("tree", treeModel, true)
+		if b {
+			mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
+			statusBar := zUI.MakeStatusBarPan("statusBar", 6)
 
-	textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
-	textArea2 := zUI.MakeTextArea("textArea2", "A text2 ... ")
-	tabs := zUI.MakeTabs("tabs", "top")
-	tabs.Add("Text1", &textArea1.Layoutable)
-	tabs.Add("Text2", &textArea2.Layoutable)
+			statusText := zUI.MakeLabel("statusText", "Ready")
+			statusBar.Add("left", &statusText.Layoutable)
 
-	splitPan := zUI.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
-	splitPan.SetLeftMinSize(250)
-	splitPan.SetRightMinSize(250)
-	splitPan.SetGripperLoc(300)
-	splitPan.Properties("", map[string]interface{}{
-		"padding": 6,
-	})
+			treeModel := zData.MakeTreeModel(map[string]interface{}{
+				"value": "Root",
+				"kids": []interface{}{
+					"Item 1",
+					"Item 2",
+				},
+			})
+			tree := zUI.MakeTree("tree", treeModel, true)
 
-	button := zUI.MakeButton("button", "Clear")
-	button.PointerReleased(func(e *js.Object) {
-		log.Println("Click!", e)
-		NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
-	})
+			textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
+			textArea2 := zUI.MakeTextArea("textArea2", "A text2 ... ")
+			tabs := zUI.MakeTabs("tabs", "top")
+			tabs.Add("Text1", &textArea1.Layoutable)
+			tabs.Add("Text2", &textArea2.Layoutable)
 
-	root.Properties("", map[string]interface{}{
-		"border":  "plain",
-		"padding": 8,
-		"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
-		"kids": map[string]interface{}{
-			"right":  button.Object(),
-			"top":    mainMenu.Object(),
-			"center": splitPan.Object(),
-			"bottom": statusBar.Object(),
-		},
-	})
+			splitPan := zUI.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
+			splitPan.SetLeftMinSize(250)
+			splitPan.SetRightMinSize(250)
+			splitPan.SetGripperLoc(300)
+			splitPan.Properties("", map[string]interface{}{
+				"padding": 6,
+			})
+
+			button := zUI.MakeButton("button", "Clear")
+			button.PointerReleased(func(e *js.Object) {
+				log.Println("Click!", e)
+				NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
+			})
+
+			root.Properties("", map[string]interface{}{
+				"border":  "plain",
+				"padding": 8,
+				"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
+				"kids": map[string]interface{}{
+					"right":  button.Object(),
+					"top":    mainMenu.Object(),
+					"center": splitPan.Object(),
+					"bottom": statusBar.Object(),
+				},
+			})
+		}
+	}()
+
+}
+
+// BuildForm -
+func BuildForm(zUI *PkgUI, zLayout *PkgLayout, zData *PkgData) {
 
 }
