@@ -47,7 +47,9 @@ func initResize() {
 	resizeCanvas()
 }
 
-func initSession(user string, password string) {
+func initSession() {
+	user := local.Data.User
+	password := local.Data.Secret
 	session = OpenSession()
 	if session == nil {
 		session = NewSession(SessionData{
@@ -56,8 +58,18 @@ func initSession(user string, password string) {
 		})
 		log.Printf("New session:%s", user)
 		return
+	} else if len(session.Data.User) == 0 {
+		session.Data.User = user
+		session.Data.Secret = password
+		log.Printf("Change user/password session:%s", user)
+		return
 	}
 	log.Printf("Open session:%s", user)
+}
+
+func initLocal() {
+	local = OpenLocal()
+	log.Printf("Open local storage")
 }
 
 func inspectObject(pref string, obj *js.Object, deep int, bound int) {

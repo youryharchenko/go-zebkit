@@ -9,7 +9,70 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 )
 
-// Sess
+// Local -
+type Local struct {
+	Obj  *js.Object
+	Data LocalData
+}
+
+// LocalData -
+type LocalData struct {
+	User    string    `json:"user"`
+	Secret  string    `json:"secret"`
+	Created time.Time `json:"created"`
+	Updated time.Time `json:"updated"`
+}
+
+// NewLocal -
+func NewLocal(data LocalData) (s *Local) {
+	data.Created = time.Now()
+	data.Updated = time.Now()
+
+	s = &Local{
+		Obj:  js.Global.Get("localStorage"),
+		Data: data,
+	}
+	s.Save()
+	return
+}
+
+// OpenLocal -
+func OpenLocal() (s *Local) {
+	o := js.Global.Get("localStorage")
+	d := o.Get("localData").String()
+	log.Printf("Get localData:%s.", d)
+	sd := LocalData{}
+	if len(d) > 0 && d != "undefined" {
+		err := json.Unmarshal([]byte(d), &sd)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		s = &Local{
+			Obj:  o,
+			Data: sd,
+		}
+		s.Save()
+	} else {
+		sd.Created = time.Now()
+		s = &Local{
+			Obj:  o,
+			Data: sd,
+		}
+		s.Save()
+	}
+	return
+}
+
+// Save -
+func (s *Local) Save() {
+	s.Data.Updated = time.Now()
+	d, err := json.Marshal(s.Data)
+	if err != nil {
+		log.Print(err.Error())
+	}
+	s.Obj.Set("localData", string(d))
+}
 
 // Session -
 type Session struct {

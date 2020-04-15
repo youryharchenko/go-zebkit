@@ -20,35 +20,45 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 	go func() {
 		err := testToken()
 		if err != nil {
-			err := login()
-			if err != nil {
-				log.Printf("Login error: %v", err)
-				formLogin := zUI.MakeFormLogin(zLayout, zData)
-				i := 0
-				for {
-					i++
-					if i > 3 {
-						log.Printf("Used max retries: %v", i)
-						chOk <- false
-						return
-					}
-					res, err := formLogin.RunModal(&root.Layoutable)
+			//err := login()
+			//if err != nil {
+			//	log.Printf("Login error: %v", err)
+			formLogin := zUI.MakeFormLogin(zLayout, zData)
+			i := 0
+			for {
+				i++
+				log.Printf("Login retry %v", i)
+				if i > 3 {
+					log.Printf("Used max retries: %v", i)
+					chOk <- false
+					return
+				}
+				log.Printf("Login - Will RunModal")
+				res, err := formLogin.RunModal(&root.Layoutable)
+				if err != nil {
+					log.Printf("Login - RunModal error:%v", err)
+					formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
+					continue
+				}
+				log.Printf("Login - RunModal result:%v", res)
+				if res == FormOk {
+					err := login()
 					if err != nil {
+						log.Printf("Login error: %v", err)
 						formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
 						continue
 					}
-					if res == FormOk {
-						err := login()
-						if err != nil {
-							formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
-							continue
-						}
-						break
-					}
+					break
 				}
 			}
+			//}
 		}
 		log.Printf("Token: %v", session.Data.Token)
+
+		local.Data.User = session.Data.User
+		local.Data.Secret = session.Data.Secret
+		local.Save()
+
 		chOk <- true
 	}()
 

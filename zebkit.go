@@ -153,56 +153,71 @@ func (ui *PkgUI) MakeTabs(id string, orient string) (t *Tabs) {
 	return
 }
 
+// MakeWindow -
+func (ui *PkgUI) MakeWindow(id string, title string, content *Panel) (w *Window) {
+	log.Printf("MakeWindow start")
+	var o *js.Object
+	if content != nil {
+		o = ui.Obj.Get("Window").New(title, content.Object())
+	} else {
+		o = ui.Obj.Get("Window").New(title, nil)
+	}
+	setID(o, id)
+	w = NewWindow(o)
+	log.Printf("MakeWindow finish")
+	return
+}
+
 // MakeFormLogin -
 func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData) (form *Form) {
-	oPan := ui.Obj.Get("Panel").New()
-	borderLayout := zLayout.MakeBorderLayout(4, 4)
-	content := NewPanel(oPan, borderLayout.Object())
-	oWin := ui.Obj.Get("Window").New("Login", content.Object())
 
-	form = NewForm(oWin)
+	form = NewForm(ui.MakeWindow("formLogin", "Login", nil), 300, 225, false)
 
-	oWin.Call("setSizeable", false)
-	oWin.Call("setSize", 300, 225)
+	root := form.Root
+	status := form.Status
+	buttons := form.Buttons
 
-	oWin.Get("root").Call("setListLayout", "left", 6)
+	root.SetListLayout("left", 6)
+
+	log.Printf("MakeFormLogin - user:%v", session.Data.User)
 
 	userLabel := ui.MakeLabel("userLabel", "User")
-	oWin.Get("root").Call("add", "center", userLabel.Object())
-	userField := ui.MakeTextField("userField", "")
+	root.Add("center", &userLabel.Layoutable)
+	userField := ui.MakeTextField("userField", session.Data.User)
 	userField.SetHint("User name")
 	userField.SetPSByRowsCols(2, 20)
 	userField.SetTextAlignment("left")
-	oWin.Get("root").Call("add", "center", userField.Object())
+	root.Add("center", &userField.Layoutable)
 
 	pwdLabel := ui.MakeLabel("pwdLabel", "Password")
-	oWin.Get("root").Call("add", "center", pwdLabel.Object())
-	pwdField := ui.MakeTextField("pwdField", "")
+	root.Add("center", &pwdLabel.Layoutable)
+	pwdField := ui.MakeTextField("pwdField", session.Data.Secret)
 	pwdField.SetHint("Password")
 	pwdField.SetPSByRowsCols(2, 20)
 	pwdField.SetTextAlignment("left")
-	oWin.Get("root").Call("add", "center", pwdField.Object())
+	root.Add("center", &pwdField.Layoutable)
 
 	buttonOK := ui.MakeButton("buttonOK", "OK")
-	oWin.Get("root").Call("add", "center", buttonOK.Object())
-	buttonOK.Object().Set("pointerReleased", func(e *js.Object) {
+	root.Add("center", &buttonOK.Layoutable)
+	buttonOK.PointerReleased(func(e *js.Object) {
 		log.Println("FormLogin button OK - pointerReleased")
 		log.Println("FormLogin will close")
-		oWin.Call("close")
-		session.Data.User = (&userField.Label).GetValue().String()
-		session.Data.Secret = (&pwdField.Label).GetValue().String()
+		form.Close()
+		session.Data.User = userField.GetValue().String()
+		session.Data.Secret = pwdField.GetValue().String()
+		session.Save()
 		form.ChResult <- FormOk
 	})
 
 	statLabel := ui.MakeLabel("statLabel", "Ready")
-	oWin.Get("status").Call("add", "center", statLabel.Object())
+	status.Insert(0, "left", &statLabel.Layoutable)
 
-	oWin.Get("buttons").Get("kids").Get("0").Set("pointerReleased", func(e *js.Object) {
+	close := NewButton(buttons.Object().Get("kids").Get("0"))
+	close.PointerReleased(func(e *js.Object) {
 		log.Println("FormLogin button close - pointerReleased")
 		log.Println("FormLogin will close")
-		oWin.Call("close")
+		form.Close()
 		form.ChResult <- FormClose
-		//inspectObject("event", e, 0, 1)
 	})
 
 	form.SetStatus("Input name, passsword and click OK")
@@ -343,6 +358,12 @@ func (l *Layoutable) Add(constr interface{}, d *Layoutable) {
 	l.Object().Call("add", constr, d.Object())
 }
 
+// Insert -
+func (l *Layoutable) Insert(i int, constr interface{}, d *Layoutable) {
+	log.Println("Insert:", constr)
+	l.Object().Call("insert", i, constr, d.Object())
+}
+
 // SetByConstraints -
 func (l *Layoutable) SetByConstraints(constr interface{}, d *Layoutable) {
 	log.Println("SetByConstraints:", constr)
@@ -374,6 +395,11 @@ func NewPanel(obj *js.Object, layout *js.Object) (p *Panel) {
 // Load -
 func (p *Panel) Load(filepath string) {
 	p.Obj.Call("load", filepath)
+}
+
+// SetListLayout -
+func (p *Panel) SetListLayout(ax string, gap int) {
+	p.Object().Call("setListLayout", ax, gap)
 }
 
 // SplitPan -
@@ -601,6 +627,16 @@ func NewWindow(obj *js.Object) (w *Window) {
 	w = &Window{}
 	w.Obj = obj
 	return
+}
+
+// SetSizeable -
+func (w *Window) SetSizeable(sizeable bool) {
+	w.Object().Call("setSizeable", sizeable)
+}
+
+// Close -
+func (w *Window) Close() {
+	w.Object().Call("close")
 }
 
 // DataModel -

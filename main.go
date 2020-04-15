@@ -5,10 +5,12 @@ var innerWidth int
 var innerHeight int
 
 var session *Session
+var local *Local
 
 func init() {
 	initResize()
-	initSession("admin", "")
+	initLocal()
+	initSession()
 
 	zebkit = NewZebkit()
 	zebkit.UIConfig("theme", "light")
