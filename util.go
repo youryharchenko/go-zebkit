@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gopherjs/gopherjs/js"
 	jsb "github.com/gopherjs/jsbuiltin"
@@ -61,7 +62,7 @@ func initSession() {
 	} else if len(session.Data.User) == 0 {
 		session.Data.User = user
 		session.Data.Secret = password
-		log.Printf("Change user/password session:%s", user)
+		log.Printf("Change session user/password :%s", user)
 		return
 	}
 	log.Printf("Open session:%s", user)
@@ -87,7 +88,9 @@ func inspectObject(pref string, obj *js.Object, deep int, bound int) {
 			log.Printf("%s: %v(%s)", np, "()", t)
 		case "object":
 			log.Printf("%s: %v(%s)", np, "{}", t)
-			inspectObject(np, p, deep+1, bound)
+			if !strings.Contains(v, "parent") {
+				inspectObject(np, p, deep+1, bound)
+			}
 		default:
 			log.Printf("%s: %v(%s)", np, "unknown", t)
 		}

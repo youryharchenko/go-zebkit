@@ -17,5 +17,5 @@ func init() {
 }
 
 func main() {
-	zebkit.Require("ui", "layout", "data", BuildUI)
+	zebkit.Require("ui", "layout", "data", "draw", BuildUI)
 }

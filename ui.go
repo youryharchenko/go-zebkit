@@ -8,11 +8,11 @@ import (
 )
 
 // BuildUI -
-func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
+func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object) {
 
 	chOk := make(chan bool, 0)
 
-	zUI, zLayout, zData := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data)
+	zUI, zLayout, zData, zDraw := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data), NewPkgDraw(draw)
 	root := zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
 
 	//inspectObject("root", root.Object(), 0, 1)
@@ -20,10 +20,7 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 	go func() {
 		err := testToken()
 		if err != nil {
-			//err := login()
-			//if err != nil {
-			//	log.Printf("Login error: %v", err)
-			formLogin := zUI.MakeFormLogin(zLayout, zData)
+			formLogin := zUI.MakeFormLogin(zLayout, zData, zDraw)
 			i := 0
 			for {
 				i++
@@ -37,7 +34,7 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 				res, err := formLogin.RunModal(&root.Layoutable)
 				if err != nil {
 					log.Printf("Login - RunModal error:%v", err)
-					formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
+					formLogin.SetValue("#statLabel", fmt.Sprintf("Login error: %v", err))
 					continue
 				}
 				log.Printf("Login - RunModal result:%v", res)
@@ -45,13 +42,12 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 					err := login()
 					if err != nil {
 						log.Printf("Login error: %v", err)
-						formLogin.SetStatus(fmt.Sprintf("Login error: %v", err))
+						formLogin.SetValue("#statLabel", fmt.Sprintf("Login error: %v", err))
 						continue
 					}
 					break
 				}
 			}
-			//}
 		}
 		log.Printf("Token: %v", session.Data.Token)
 
@@ -72,7 +68,7 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 			statusText := zUI.MakeLabel("statusText", "Ready")
 			statusBar.Add("left", &statusText.Layoutable)
 
-			treeModel := zData.MakeTreeModel(map[string]interface{}{
+			treeModel := zData.MakeTreeModel(js.M{
 				"value": "Root",
 				"kids": []interface{}{
 					"Item 1",
@@ -91,7 +87,7 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 			splitPan.SetLeftMinSize(250)
 			splitPan.SetRightMinSize(250)
 			splitPan.SetGripperLoc(300)
-			splitPan.Properties("", map[string]interface{}{
+			splitPan.Properties("", js.M{
 				"padding": 6,
 			})
 
@@ -101,11 +97,11 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 				NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
 			})
 
-			root.Properties("", map[string]interface{}{
+			root.Properties("", js.M{
 				"border":  "plain",
 				"padding": 8,
 				"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
-				"kids": map[string]interface{}{
+				"kids": js.M{
 					"right":  button.Object(),
 					"top":    mainMenu.Object(),
 					"center": splitPan.Object(),
@@ -117,7 +113,73 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object) {
 
 }
 
-// BuildForm -
-func BuildForm(zUI *PkgUI, zLayout *PkgLayout, zData *PkgData) {
+// MakeFormLogin -
+func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw) (form *Form) {
 
+	form = NewForm(ui.MakeWindow("formLogin", "Login", nil), 300, 225, false)
+
+	root := form.Root
+	status := form.Status
+	buttons := form.Buttons
+
+	root.SetListLayout("left", 6)
+
+	log.Printf("MakeFormLogin - user:%v", session.Data.User)
+
+	userLabel := ui.MakeLabel("userLabel", "User")
+	root.Add("center", &userLabel.Layoutable)
+	userField := ui.MakeTextField("userField", session.Data.User)
+	userField.SetHint("User name")
+	userField.SetPSByRowsCols(2, 20)
+	userField.SetTextAlignment("left")
+	root.Add("center", &userField.Layoutable)
+
+	form.Focus = &userField.Panel
+
+	pwdLabel := ui.MakeLabel("pwdLabel", "Password")
+	root.Add("center", &pwdLabel.Layoutable)
+	pwdField := ui.MakePassTextField("pwdField", session.Data.Secret, 10, false)
+	pwdField.SetHint("Password")
+	pwdField.SetPSByRowsCols(2, 20)
+	pwdField.SetTextAlignment("left")
+	root.Add("center", &pwdField.Layoutable)
+
+	fnOk := func(e *js.Object) {
+		log.Println("FormLogin - OK")
+		form.Close()
+		session.Data.User = userField.GetValue().String()
+		session.Data.Secret = pwdField.GetValue().String()
+		session.Save()
+		form.ChResult <- FormOk
+	}
+
+	fnClose := func(e *js.Object) {
+		log.Println("FormLogin - Close")
+		form.Close()
+		form.ChResult <- FormClose
+	}
+
+	buttonOK := ui.MakeButton("buttonOK", "OK")
+	root.Add("center", &buttonOK.Layoutable)
+
+	buttonOK.Fired(fnOk)
+
+	statLabel := ui.MakeLabel("statLabel", "Ready")
+	status.Insert(0, "left", &statLabel.Layoutable)
+
+	close := NewButton(buttons.Object().Get("kids").Get("0"))
+	close.Fired(fnClose)
+
+	form.ChildKeyTyped(func(key *js.Object) {
+		k := NewKeyEvent(key)
+		log.Printf("KeyTyped:%v", k.Code())
+		switch k.Code() {
+		case "Enter":
+			fnOk(key)
+		}
+	})
+
+	form.SetValue("#statLabel", "Input name, passsword and click OK")
+
+	return
 }

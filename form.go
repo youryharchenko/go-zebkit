@@ -20,6 +20,7 @@ type Form struct {
 	Root     *Panel
 	Status   *Panel
 	Buttons  *Panel
+	Focus    *Panel
 	ChResult chan FormResult
 }
 
@@ -44,17 +45,36 @@ func (form *Form) RunModal(parent *Layoutable) (res FormResult, err error) {
 	log.Printf("Login - RunModal started")
 
 	parent.SetByConstraints("center", &form.Win.Layoutable)
+	form.RequestFocus()
 	res = <-form.ChResult
 
 	log.Printf("Login - RunModal finish")
 	return
 }
 
-// SetStatus -
-func (form *Form) SetStatus(stat string) {
-	form.Win.ByPath("#statLabel", nil).Call("setValue", stat)
+// SetValue -
+func (form *Form) SetValue(id string, stat interface{}) {
+	form.Win.ByPath(id, nil).Call("setValue", stat)
 }
 
+// RequestFocus -
+func (form *Form) RequestFocus() {
+	form.Focus.RequestFocus()
+}
+
+// KeyTyped -
+func (form *Form) KeyTyped(f interface{}) {
+	//form.Win.KeyTyped(f)
+	form.Root.KeyTyped(f)
+}
+
+// ChildKeyTyped -
+func (form *Form) ChildKeyTyped(f interface{}) {
+	//form.Win.KeyTyped(f)
+	form.Root.ChildKeyTyped(f)
+}
+
+// Close -
 func (form *Form) Close() {
 	form.Win.Close()
 }

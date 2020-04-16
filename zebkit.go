@@ -121,6 +121,14 @@ func (ui *PkgUI) MakeTextField(id string, r interface{}) (tf *TextField) {
 	return
 }
 
+// MakePassTextField -
+func (ui *PkgUI) MakePassTextField(id string, txt string, maxSize int, showLast bool) (pt *TextField) {
+	o := ui.Obj.Get("PassTextField").New(txt, maxSize, showLast)
+	setID(o, id)
+	pt = NewTextField(o)
+	return
+}
+
 // MakeTextArea -
 func (ui *PkgUI) MakeTextArea(id string, text string) (c *TextArea) {
 	o := ui.Obj.Get("TextArea").New(text)
@@ -168,63 +176,6 @@ func (ui *PkgUI) MakeWindow(id string, title string, content *Panel) (w *Window)
 	return
 }
 
-// MakeFormLogin -
-func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData) (form *Form) {
-
-	form = NewForm(ui.MakeWindow("formLogin", "Login", nil), 300, 225, false)
-
-	root := form.Root
-	status := form.Status
-	buttons := form.Buttons
-
-	root.SetListLayout("left", 6)
-
-	log.Printf("MakeFormLogin - user:%v", session.Data.User)
-
-	userLabel := ui.MakeLabel("userLabel", "User")
-	root.Add("center", &userLabel.Layoutable)
-	userField := ui.MakeTextField("userField", session.Data.User)
-	userField.SetHint("User name")
-	userField.SetPSByRowsCols(2, 20)
-	userField.SetTextAlignment("left")
-	root.Add("center", &userField.Layoutable)
-
-	pwdLabel := ui.MakeLabel("pwdLabel", "Password")
-	root.Add("center", &pwdLabel.Layoutable)
-	pwdField := ui.MakeTextField("pwdField", session.Data.Secret)
-	pwdField.SetHint("Password")
-	pwdField.SetPSByRowsCols(2, 20)
-	pwdField.SetTextAlignment("left")
-	root.Add("center", &pwdField.Layoutable)
-
-	buttonOK := ui.MakeButton("buttonOK", "OK")
-	root.Add("center", &buttonOK.Layoutable)
-	buttonOK.PointerReleased(func(e *js.Object) {
-		log.Println("FormLogin button OK - pointerReleased")
-		log.Println("FormLogin will close")
-		form.Close()
-		session.Data.User = userField.GetValue().String()
-		session.Data.Secret = pwdField.GetValue().String()
-		session.Save()
-		form.ChResult <- FormOk
-	})
-
-	statLabel := ui.MakeLabel("statLabel", "Ready")
-	status.Insert(0, "left", &statLabel.Layoutable)
-
-	close := NewButton(buttons.Object().Get("kids").Get("0"))
-	close.PointerReleased(func(e *js.Object) {
-		log.Println("FormLogin button close - pointerReleased")
-		log.Println("FormLogin will close")
-		form.Close()
-		form.ChResult <- FormClose
-	})
-
-	form.SetStatus("Input name, passsword and click OK")
-
-	return
-}
-
 // PkgLayout -
 type PkgLayout struct {
 	Obj *js.Object
@@ -262,6 +213,26 @@ func NewPkgData(obj *js.Object) (d *PkgData) {
 func (d *PkgData) MakeTreeModel(arg interface{}) (tm *TreeModel) {
 	o := d.Obj.Get("TreeModel").New(arg)
 	tm = NewTreeModel(o)
+	return
+}
+
+// PkgDraw -
+type PkgDraw struct {
+	Obj *js.Object
+}
+
+// NewPkgDraw -
+func NewPkgDraw(obj *js.Object) (d *PkgDraw) {
+	d = &PkgDraw{
+		Obj: obj,
+	}
+	return d
+}
+
+// MakePasswordText -
+func (draw *PkgDraw) MakePasswordText(r interface{}) (pt *PasswordText) {
+	o := draw.Obj.Get("PasswordText").New(r)
+	pt = NewPasswordText(o)
 	return
 }
 
@@ -402,6 +373,21 @@ func (p *Panel) SetListLayout(ax string, gap int) {
 	p.Object().Call("setListLayout", ax, gap)
 }
 
+// RequestFocus -
+func (p *Panel) RequestFocus() {
+	p.Object().Call("requestFocus")
+}
+
+// KeyTyped -
+func (p *Panel) KeyTyped(f interface{}) {
+	p.Object().Set("keyTyped", f)
+}
+
+// ChildKeyTyped -
+func (p *Panel) ChildKeyTyped(f interface{}) {
+	p.Object().Set("childKeyTyped", f)
+}
+
 // SplitPan -
 type SplitPan struct {
 	Panel
@@ -451,8 +437,8 @@ type EvStatePan struct {
 }
 
 // PointerReleased -
-func (es *EvStatePan) PointerReleased(arg interface{}) {
-	es.Object().Set("pointerReleased", arg)
+func (es *EvStatePan) PointerReleased(f interface{}) {
+	es.Object().Set("pointerReleased", f)
 }
 
 // Button -
@@ -465,6 +451,11 @@ func NewButton(obj *js.Object) (b *Button) {
 	b = &Button{}
 	b.Obj = obj
 	return
+}
+
+// Fired -
+func (b *Button) Fired(f interface{}) {
+	b.Object().Set("fired", f)
 }
 
 // Label -
@@ -515,6 +506,18 @@ func (tf *TextField) SetPSByRowsCols(r int, c int) {
 // SetTextAlignment -
 func (tf *TextField) SetTextAlignment(ax string) {
 	tf.Object().Call("setTextAlignment", ax)
+}
+
+// PassTextField -
+type PassTextField struct {
+	TextField
+}
+
+// NewPassTextField -
+func NewPassTextField(obj *js.Object) (pt *PassTextField) {
+	pt = &PassTextField{}
+	pt.Obj = obj
+	return
 }
 
 // TextArea -
@@ -666,4 +669,83 @@ func (tm *TreeModel) Object() (o *js.Object) {
 
 // EventProducer -
 type EventProducer interface {
+}
+
+// View -
+type View struct {
+	Obj *js.Object
+}
+
+// Object -
+func (v *View) Object() (o *js.Object) {
+	o = v.Obj
+	return
+}
+
+// Render -
+type Render struct {
+	View
+}
+
+// BaseTextRender -
+type BaseTextRender struct {
+	Render
+}
+
+// TextRender -
+type TextRender struct {
+	BaseTextRender
+}
+
+// PasswordText -
+type PasswordText struct {
+	TextRender
+}
+
+// NewPasswordText -
+func NewPasswordText(obj *js.Object) (pt *PasswordText) {
+	pt = &PasswordText{}
+	pt.Obj = obj
+	return
+}
+
+// SetEchoChar -
+func (pt *PasswordText) SetEchoChar(ch string) {
+	pt.Object().Call("setEchoChar", ch)
+}
+
+// Event -
+type Event struct {
+	Obj *js.Object
+	Src *js.Object
+}
+
+// Object -
+func (e *Event) Object() (o *js.Object) {
+	o = e.Obj
+	return
+}
+
+// Source -
+func (e *Event) Source() (s *js.Object) {
+	s = e.Src
+	return
+}
+
+// KeyEvent -
+type KeyEvent struct {
+	Event
+}
+
+// NewKeyEvent -
+func NewKeyEvent(obj *js.Object) (ke *KeyEvent) {
+	ke = &KeyEvent{}
+	ke.Obj = obj
+	return
+}
+
+// Code -
+func (ke *KeyEvent) Code() (c string) {
+	c = ke.Object().Get("code").String()
+	return
 }
