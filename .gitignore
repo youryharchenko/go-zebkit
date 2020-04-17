@@ -15,4 +15,6 @@
 # vendor/
 
 static/
+server/db/
+server/query/
 server/cmd/server

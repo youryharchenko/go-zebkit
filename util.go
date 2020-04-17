@@ -147,3 +147,132 @@ func testToken() (err error) {
 	log.Println(string(resp))
 	return
 }
+
+func post(uri string, r string) (response string, err error) {
+	req := xhr.NewRequest("POST", uri)
+	req.ResponseType = xhr.Text // Returns response as string
+	req.SetRequestHeader("Content-Type", xhr.ApplicationJSON)
+	req.SetRequestHeader("Authorization", "Bearer "+session.Data.Token)
+
+	err = req.Send(context.Background(), r)
+	if err != nil {
+		return
+	}
+	if !req.IsStatus2xx() {
+		err = fmt.Errorf("%v, %s", req.Status, req.StatusText)
+		return
+	}
+	response = req.ResponseText
+	return
+}
+
+func makeTreeModel() (tm js.M) {
+	tm = js.M{
+		"value": "Application",
+		"kids": js.S{
+			js.M{
+				"value": "Meta",
+				"kids":  js.S{},
+			},
+		},
+	}
+
+	r := `{
+		"request": {
+			"command": "export",
+			"service": "meta"
+		},
+		"db": {
+			"driver": "",
+			"connection": "",
+			"show": true
+		},
+		"body": {}
+	}`
+
+	response, err := post("/api/run", r)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Printf("Response:%s", response)
+
+	meta := js.M{}
+	err = json.Unmarshal([]byte(response), &meta)
+	if err != nil {
+		return
+	}
+
+	body, ok := meta["body"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	//relationTraits := body["relation-traits"].([]map[string]interface{})
+	//if !ok {
+	//	return
+	//}
+
+	tm = js.M{
+		"value": "Application",
+		"kids": js.S{
+			js.M{
+				"value": "Meta",
+				"kids": js.S{
+					js.M{
+						"value": "Traits",
+						"kids":  traitsToTreeModel(body),
+					},
+					js.M{
+						"value": "Relations",
+						"kids":  relationsToTreeModel(body),
+					},
+				},
+			},
+			js.M{
+				"value": "Objects",
+				"kids":  js.S{},
+			},
+		},
+	}
+	return
+}
+
+func traitsToTreeModel(body map[string]interface{}) (model js.S) {
+	//relations, ok := body["relations"].([]interface{})
+	//if !ok {
+	//	return
+	//}
+	traits, ok := body["traits"].([]interface{})
+	if !ok {
+		return
+	}
+
+	model = js.S{}
+	for _, v := range traits {
+		item := js.M{
+			"value": v.(map[string]interface{})["name"],
+		}
+		model = append(model, item)
+	}
+	return
+}
+
+func relationsToTreeModel(body map[string]interface{}) (model js.S) {
+	relations, ok := body["relations"].([]interface{})
+	if !ok {
+		return
+	}
+	//traits, ok := body["traits"].([]interface{})
+	//if !ok {
+	//	return
+	//}
+	model = js.S{}
+	for _, v := range relations {
+		item := js.M{
+			"value": v.(map[string]interface{})["name"],
+		}
+		model = append(model, item)
+	}
+	return
+}

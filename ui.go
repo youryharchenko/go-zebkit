@@ -62,19 +62,15 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 		b := <-chOk
 
 		if b {
-			mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
-			statusBar := zUI.MakeStatusBarPan("statusBar", 6)
+			//mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
+			toolBar := zUI.MakeToolBar("toolBar")
 
+			statusBar := zUI.MakeStatusBarPan("statusBar", 6)
+			statusBar.SetBackground("lightgrey")
 			statusText := zUI.MakeLabel("statusText", "Ready")
 			statusBar.Add("left", &statusText.Layoutable)
 
-			treeModel := zData.MakeTreeModel(js.M{
-				"value": "Root",
-				"kids": []interface{}{
-					"Item 1",
-					"Item 2",
-				},
-			})
+			treeModel := zData.MakeTreeModel(makeTreeModel())
 			tree := zUI.MakeTree("tree", treeModel, true)
 
 			textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
@@ -90,20 +86,20 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 			splitPan.Properties("", js.M{
 				"padding": 6,
 			})
-
-			button := zUI.MakeButton("button", "Clear")
-			button.PointerReleased(func(e *js.Object) {
-				log.Println("Click!", e)
-				NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
-			})
-
+			/*
+				button := zUI.MakeButton("button", "Clear")
+				button.PointerReleased(func(e *js.Object) {
+					log.Println("Click!", e)
+					NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
+				})
+			*/
 			root.Properties("", js.M{
 				"border":  "plain",
 				"padding": 8,
 				"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
 				"kids": js.M{
-					"right":  button.Object(),
-					"top":    mainMenu.Object(),
+					//"right":  button.Object(),
+					"top":    toolBar.Object(),
 					"center": splitPan.Object(),
 					"bottom": statusBar.Object(),
 				},
@@ -161,13 +157,25 @@ func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDra
 
 	buttonOK := ui.MakeButton("buttonOK", "OK")
 	root.Add("center", &buttonOK.Layoutable)
-
 	buttonOK.Fired(fnOk)
 
-	statLabel := ui.MakeLabel("statLabel", "Ready")
-	status.Insert(0, "left", &statLabel.Layoutable)
+	//log.Printf("status.Kids len:%v", len(status.Kids()))
+	status.Remove(status.Kids()[0])
+	status.SetFlowLayout("center", "center", "horizontal", 4)
+	//status.SetBackground("grey")
+	//log.Printf("status.Kids len:%v", len(status.Kids()))
 
-	close := NewButton(buttons.Object().Get("kids").Get("0"))
+	statLabel := ui.MakeLabel("statLabel", "Ready")
+	//statLabel.SetBackground("white")
+	status.Add("center", &statLabel.Layoutable)
+
+	//log.Printf("status.Kids len:%v", len(status.Kids()))
+
+	//inspectObject("status.Kids.0", status.Kids()[0], 0, 1)
+	//statLabel := NewLabel(status.Kids()[0])
+	//statLabel.SetID("statLabel")
+
+	close := NewButton(buttons.Kids()[0])
 	close.Fired(fnClose)
 
 	form.ChildKeyTyped(func(key *js.Object) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/gopherjs/gopherjs/js"
 )
@@ -137,6 +138,14 @@ func (ui *PkgUI) MakeTextArea(id string, text string) (c *TextArea) {
 	return
 }
 
+// MakeToolBar  -
+func (ui *PkgUI) MakeToolBar(id string) (tb *ToolBar) {
+	o := ui.Obj.Get("Toolbar").New()
+	setID(o, id)
+	tb = NewToolBar(o)
+	return
+}
+
 // MakeSplitPan -
 func (ui *PkgUI) MakeSplitPan(id string, first *Panel, second *Panel, orient string) (c *SplitPan) {
 	o := ui.Obj.Get("SplitPan").New(first.Object(), second.Object(), orient)
@@ -173,6 +182,15 @@ func (ui *PkgUI) MakeWindow(id string, title string, content *Panel) (w *Window)
 	setID(o, id)
 	w = NewWindow(o)
 	log.Printf("MakeWindow finish")
+	return
+}
+
+// Kids -
+func (ui *PkgUI) Kids(parent *Layoutable) (kids []*Layoutable) {
+	objs := parent.Kids()
+	for i := 0; i < len(objs); i++ {
+		kids = append(kids, NewLayoutable(objs[i]))
+	}
 	return
 }
 
@@ -303,6 +321,12 @@ func (l *Layoutable) Object() (o *js.Object) {
 	return
 }
 
+// SetID -
+func (l *Layoutable) SetID(id string) {
+	setID(l.Obj, id)
+	return
+}
+
 // ByPath -
 func (l *Layoutable) ByPath(path string, arg interface{}) (o *js.Object) {
 	if arg == nil {
@@ -350,6 +374,27 @@ func (l *Layoutable) Properties(path string, props map[string]interface{}) {
 	}
 }
 
+// Kids -
+func (l *Layoutable) Kids() (kids []*js.Object) {
+	objs := l.Object().Get("kids")
+	if objs == nil || objs.String() == "undefined" {
+		return
+	}
+	n := objs.Length()
+	for i := 0; i < n; i++ {
+		ind := strconv.Itoa(i)
+		kid := objs.Get(ind)
+		kids = append(kids, kid)
+	}
+	return
+}
+
+// Remove -
+func (l *Layoutable) Remove(obj *js.Object) (r *Layoutable) {
+	r = NewLayoutable(l.Object().Call("remove", obj))
+	return
+}
+
 // Panel -
 type Panel struct {
 	Layoutable
@@ -363,14 +408,24 @@ func NewPanel(obj *js.Object, layout *js.Object) (p *Panel) {
 	return
 }
 
+// SetBackground -
+func (p *Panel) SetBackground(v interface{}) {
+	p.Object().Call("setBackground", v)
+}
+
 // Load -
 func (p *Panel) Load(filepath string) {
-	p.Obj.Call("load", filepath)
+	p.Object().Call("load", filepath)
 }
 
 // SetListLayout -
 func (p *Panel) SetListLayout(ax string, gap int) {
 	p.Object().Call("setListLayout", ax, gap)
+}
+
+// SetFlowLayout -
+func (p *Panel) SetFlowLayout(ax string, ay string, dir string, gap int) {
+	p.Object().Call("setFlowLayout", ax, ay, dir, gap)
 }
 
 // RequestFocus -
@@ -386,6 +441,18 @@ func (p *Panel) KeyTyped(f interface{}) {
 // ChildKeyTyped -
 func (p *Panel) ChildKeyTyped(f interface{}) {
 	p.Object().Set("childKeyTyped", f)
+}
+
+// ToolBar -
+type ToolBar struct {
+	Panel
+}
+
+// NewToolBar -
+func NewToolBar(obj *js.Object) (tb *ToolBar) {
+	tb = &ToolBar{}
+	tb.Obj = obj
+	return
 }
 
 // SplitPan -
@@ -476,6 +543,11 @@ func (l *Label) GetValue() (v *js.Object) {
 	return
 }
 
+// SetValue -
+func (l *Label) SetValue(text string) {
+	l.Object().Call("setValue", text)
+}
+
 // TextField -
 type TextField struct {
 	Label
@@ -486,11 +558,6 @@ func NewTextField(obj *js.Object) (tf *TextField) {
 	tf = &TextField{}
 	tf.Obj = obj
 	return
-}
-
-// SetValue -
-func (tf *TextField) SetValue(text string) {
-	tf.Object().Call("setValue", text)
 }
 
 // SetHint -
