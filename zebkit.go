@@ -420,6 +420,30 @@ func (l *Layoutable) Remove(obj *js.Object) (r *Layoutable) {
 	return
 }
 
+// Fire -
+func (l *Layoutable) Fire(eventName string, params interface{}) {
+	l.Object().Call("fire", eventName, params)
+}
+
+// On -
+func (l *Layoutable) On(eventName string, cb interface{}) {
+	if len(eventName) == 0 {
+		l.Object().Call("on", cb)
+	} else {
+		l.Object().Call("on", eventName, cb)
+	}
+
+}
+
+// Off -
+func (l *Layoutable) Off(eventName string, cb interface{}) {
+	if len(eventName) == 0 {
+		l.Object().Call("off", cb)
+	} else {
+		l.Object().Call("off", eventName, cb)
+	}
+}
+
 // Panel -
 type Panel struct {
 	Layoutable
@@ -477,6 +501,12 @@ type ToolBar struct {
 func NewToolBar(obj *js.Object) (tb *ToolBar) {
 	tb = &ToolBar{}
 	tb.Obj = obj
+	return
+}
+
+// AddImage -
+func (tb *ToolBar) AddImage(img interface{}) (p *Panel) {
+	p = NewPanel(tb.Object().Call("addImage", img), nil)
 	return
 }
 

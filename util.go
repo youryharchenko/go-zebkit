@@ -244,6 +244,24 @@ func makeTreeModel() (tm js.M) {
 	return
 }
 
+func fillToolBar(toolBar *ToolBar) {
+	addToolBarImage(toolBar, "images/24/gtk-refresh.png", "tbRefresh")
+	addToolBarImage(toolBar, "images/24/gnome-logout.png", "tbLogout")
+}
+
+func addToolBarImage(toolBar *ToolBar, img string, id string) {
+	p := toolBar.AddImage(img)
+	p.SetID(id)
+	//p.Object().Set("fired", f)
+}
+
+func dispatchToolBarEvent(id string) {
+	switch id {
+	case "tbRefresh":
+		go refreshMeta()
+	}
+}
+
 func traitsToTreeModel(body map[string]interface{}) (model js.S) {
 	//relations, ok := body["relations"].([]interface{})
 	//if !ok {

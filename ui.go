@@ -73,6 +73,8 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 			//mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
 			toolBar := zUI.MakeToolBar("toolBar")
 
+			fillToolBar(toolBar)
+
 			statusBar := zUI.MakeStatusBarPan("statusBar", 6)
 			statusBar.SetBackground("lightgrey")
 			statusText := zUI.MakeLabel("statusText", "Ready")
@@ -93,6 +95,21 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 				name := v.Get("name").String()
 				t := v.Get("type").String()
 				log.Println("Tree node cur selected:", name, t)
+			})
+
+			toolBar.On("./*", func(src *js.Object, arg1 *js.Object, arg2 *js.Object) {
+				//inspectObject("arg1", arg1, 0, 1)
+				//inspectObject("arg2", arg2, 0, 1)
+				//inspectObject("src.0", NewPanel(src, nil).Kids()[0], 0, 1)
+				ks := NewPanel(src, nil).Kids()
+				//log.Println("ToolBar button fired:", src.Get("id").String())
+				for i := range ks {
+					log.Println(i, ks[i].Get("id").String(), ks[i].Get("state").String())
+					if ks[i].Get("state").String() == "over" {
+						dispatchToolBarEvent(ks[i].Get("id").String())
+					}
+				}
+
 			})
 
 			textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
