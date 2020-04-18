@@ -55,6 +55,14 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 		local.Data.Secret = session.Data.Secret
 		local.Save()
 
+		err = refreshMeta()
+		if err != nil {
+			log.Printf("Refresh meta error: %v", err)
+			chOk <- false
+			return
+		}
+		session.Save()
+
 		chOk <- true
 	}()
 
@@ -70,8 +78,22 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 			statusText := zUI.MakeLabel("statusText", "Ready")
 			statusBar.Add("left", &statusText.Layoutable)
 
-			treeModel := zData.MakeTreeModel(makeTreeModel())
+			treeModel := zData.MakeTreeModel(zData.MakeAppRoot())
+			zData.AddMeta(treeModel)
 			tree := zUI.MakeTree("tree", treeModel, true)
+			defViews := zUI.MakeDefViews()
+			defViews.SetView(func(t *js.Object, i *js.Object) (v *js.Object) {
+				name := NewItem(i).Value().Get("name").String()
+				v = zDraw.MakeStringRender(name).Object()
+				return
+			})
+			tree.SetViewProvider(defViews)
+			tree.On("selected", func(src *js.Object, i *js.Object) {
+				v := NewTree(src).Selected().Value()
+				name := v.Get("name").String()
+				t := v.Get("type").String()
+				log.Println("Tree node cur selected:", name, t)
+			})
 
 			textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
 			textArea2 := zUI.MakeTextArea("textArea2", "A text2 ... ")
@@ -189,5 +211,78 @@ func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDra
 
 	form.SetValue("#statLabel", "Input name, passsword and click OK")
 
+	return
+}
+
+// MakeAppRoot -
+func (data *PkgData) MakeAppRoot() (r *Item) {
+	r = data.MakeItem(
+		js.M{"name": "Application", "type": "app"},
+	)
+	return
+}
+
+// AddMeta -
+func (data *PkgData) AddMeta(model *TreeModel) (err error) {
+	root := model.Root()
+	meta := data.MakeItem(
+		js.M{"name": "Meta", "type": "section"},
+	)
+	model.Add(root, meta)
+
+	traits := data.MakeItem(
+		js.M{"name": "Traits", "type": "section"},
+	)
+	relations := data.MakeItem(
+		js.M{"name": "Relations", "type": "section"},
+	)
+	model.Add(meta, traits)
+	model.Add(meta, relations)
+
+	body, ok := session.Data.Meta["body"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	data.AddTraits(model, traits, body)
+	data.AddRelations(model, relations, body)
+	return
+}
+
+// AddTraits -
+func (data *PkgData) AddTraits(model *TreeModel, traits *Item, body map[string]interface{}) (err error) {
+	a, ok := body["traits"].([]interface{})
+	if !ok {
+		return
+	}
+	for _, v := range a {
+		name, ok := v.(map[string]interface{})["name"]
+		if !ok {
+			name = "Noname"
+		}
+		item := data.MakeItem(
+			js.M{"name": name, "type": "trait", "data": v},
+		)
+		model.Add(traits, item)
+	}
+	return
+}
+
+// AddRelations -
+func (data *PkgData) AddRelations(model *TreeModel, relations *Item, body map[string]interface{}) (err error) {
+	a, ok := body["relations"].([]interface{})
+	if !ok {
+		return
+	}
+	for _, v := range a {
+		name, ok := v.(map[string]interface{})["name"]
+		if !ok {
+			name = "Noname"
+		}
+		item := data.MakeItem(
+			js.M{"name": name, "type": "relation", "data": v},
+		)
+		model.Add(relations, item)
+	}
 	return
 }

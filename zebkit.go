@@ -162,6 +162,13 @@ func (ui *PkgUI) MakeTree(id string, model *TreeModel, b bool) (t *Tree) {
 	return
 }
 
+// MakeDefViews -
+func (ui *PkgUI) MakeDefViews() (dv *DefViews) {
+	o := ui.Obj.Get("tree").Get("DefViews").New()
+	dv = NewDefViews(o)
+	return
+}
+
 // MakeTabs -
 func (ui *PkgUI) MakeTabs(id string, orient string) (t *Tabs) {
 	o := ui.Obj.Get("Tabs").New(orient)
@@ -228,9 +235,16 @@ func NewPkgData(obj *js.Object) (d *PkgData) {
 }
 
 // MakeTreeModel -
-func (d *PkgData) MakeTreeModel(arg interface{}) (tm *TreeModel) {
-	o := d.Obj.Get("TreeModel").New(arg)
+func (d *PkgData) MakeTreeModel(r *Item) (tm *TreeModel) {
+	o := d.Obj.Get("TreeModel").New(r)
 	tm = NewTreeModel(o)
+	return
+}
+
+// MakeItem -
+func (d *PkgData) MakeItem(v interface{}) (i *Item) {
+	o := d.Obj.Get("Item").New(v)
+	i = NewItem(o)
 	return
 }
 
@@ -254,8 +268,19 @@ func (draw *PkgDraw) MakePasswordText(r interface{}) (pt *PasswordText) {
 	return
 }
 
+// MakeStringRender -
+func (draw *PkgDraw) MakeStringRender(name string) (sr *StringRender) {
+	o := draw.Obj.Get("StringRender").New(name)
+	sr = NewStringRender(o)
+	return
+}
+
 // Layout -
 type Layout interface {
+}
+
+// HostDecorativeViews -
+type HostDecorativeViews interface {
 }
 
 // BorderLayout -
@@ -660,6 +685,29 @@ func NewStatusBarPan(obj *js.Object) (sb *StatusBarPan) {
 // BaseTree -
 type BaseTree struct {
 	Panel
+	EventProducer
+	HostDecorativeViews
+}
+
+// Selected -
+func (bt *BaseTree) Selected() (i *Item) {
+	i = NewItem(bt.Object().Get("selected"))
+	return
+}
+
+// Fire -
+func (bt *BaseTree) Fire(eventName string, params interface{}) {
+	bt.Object().Call("fire", eventName, params)
+}
+
+// On -
+func (bt *BaseTree) On(eventName string, cb interface{}) {
+	bt.Object().Call("on", eventName, cb)
+}
+
+// Off -
+func (bt *BaseTree) Off(eventName string, cb interface{}) {
+	bt.Object().Call("off", eventName, cb)
 }
 
 // Tree -
@@ -674,10 +722,16 @@ func NewTree(obj *js.Object) (t *Tree) {
 	return
 }
 
+// SetViewProvider -
+func (t *Tree) SetViewProvider(p *DefViews) {
+	t.Object().Call("setViewProvider", p)
+}
+
 // Tabs -
 type Tabs struct {
 	Panel
 	EventProducer
+	HostDecorativeViews
 }
 
 // NewTabs -
@@ -734,6 +788,64 @@ func (tm *TreeModel) Object() (o *js.Object) {
 	return
 }
 
+// Add -
+func (tm *TreeModel) Add(to *Item, an *Item) {
+	tm.Object().Call("add", to.Object(), an.Object())
+}
+
+// Root -
+func (tm *TreeModel) Root() (root *Item) {
+	root = NewItem(tm.Object().Get("root"))
+	return
+}
+
+// Item -
+type Item struct {
+	Obj *js.Object
+	Val *js.Object
+}
+
+// NewItem -
+func NewItem(o *js.Object) (i *Item) {
+	i = &Item{}
+	i.Obj = o
+	return
+}
+
+// Object -
+func (i *Item) Object() (o *js.Object) {
+	o = i.Obj
+	return
+}
+
+// Parent -
+func (i *Item) Parent() (p *Item) {
+	p = NewItem(i.Object().Get("parent"))
+	return
+}
+
+// Value -
+func (i *Item) Value() (v *js.Object) {
+	v = i.Object().Get("value")
+	return
+}
+
+// Kids -
+func (i *Item) Kids() (kids []*js.Object) {
+	objs := i.Object().Get("kids")
+
+	if objs == nil || objs.String() == "undefined" {
+		return
+	}
+	n := objs.Length()
+	for i := 0; i < n; i++ {
+		ind := strconv.Itoa(i)
+		kid := objs.Get(ind)
+		kids = append(kids, kid)
+	}
+	return
+}
+
 // EventProducer -
 type EventProducer interface {
 }
@@ -779,6 +891,46 @@ func NewPasswordText(obj *js.Object) (pt *PasswordText) {
 // SetEchoChar -
 func (pt *PasswordText) SetEchoChar(ch string) {
 	pt.Object().Call("setEchoChar", ch)
+}
+
+// BaseViewProvider -
+type BaseViewProvider struct {
+	Obj *js.Object
+}
+
+// Object -
+func (bp *BaseViewProvider) Object() (o *js.Object) {
+	o = bp.Obj
+	return
+}
+
+// DefViews -
+type DefViews struct {
+	BaseViewProvider
+}
+
+// NewDefViews -
+func NewDefViews(obj *js.Object) (dv *DefViews) {
+	dv = &DefViews{}
+	dv.Obj = obj
+	return
+}
+
+// SetView -
+func (dv *DefViews) SetView(f interface{}) {
+	dv.Object().Set("getView", f)
+}
+
+// StringRender -
+type StringRender struct {
+	BaseTextRender
+}
+
+// NewStringRender -
+func NewStringRender(obj *js.Object) (sr *StringRender) {
+	sr = &StringRender{}
+	sr.Obj = obj
+	return
 }
 
 // Event -

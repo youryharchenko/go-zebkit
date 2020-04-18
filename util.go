@@ -166,17 +166,7 @@ func post(uri string, r string) (response string, err error) {
 	return
 }
 
-func makeTreeModel() (tm js.M) {
-	tm = js.M{
-		"value": "Application",
-		"kids": js.S{
-			js.M{
-				"value": "Meta",
-				"kids":  js.S{},
-			},
-		},
-	}
-
+func refreshMeta() (err error) {
 	r := `{
 		"request": {
 			"command": "export",
@@ -202,8 +192,24 @@ func makeTreeModel() (tm js.M) {
 	if err != nil {
 		return
 	}
+	session.Data.Meta = meta
+	session.Save()
+	return
+}
 
-	body, ok := meta["body"].(map[string]interface{})
+func makeTreeModel() (tm js.M) {
+
+	tm = js.M{
+		"value": "Application",
+		"kids": js.S{
+			js.M{
+				"value": "Meta",
+				"kids":  js.S{},
+			},
+		},
+	}
+
+	body, ok := session.Data.Meta["body"].(map[string]interface{})
 	if !ok {
 		return
 	}
