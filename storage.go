@@ -87,6 +87,7 @@ type SessionData struct {
 	UUID    string    `json:"uuid"`
 	Token   string    `json:"token"`
 	Meta    js.M      `json:"meta"`
+	Item    string    `json:"item"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
 }

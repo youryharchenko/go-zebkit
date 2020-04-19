@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -13,138 +12,19 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 	chOk := make(chan bool, 0)
 
 	zUI, zLayout, zData, zDraw := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data), NewPkgDraw(draw)
-	root := zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
+	rootCanvas = zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
 
-	//inspectObject("root", root.Object(), 0, 1)
+	formLogin = zUI.MakeFormLogin(zLayout, zData, zDraw)
+	toolBar = zUI.MakeToolBar("toolBar")
+	statusBar = zUI.MakeStatusBarPan("statusBar", 6)
+	treeModel = zData.MakeTreeModel(zData.MakeAppRoot())
+	zData.AddMeta(treeModel)
+	tree = zUI.MakeTree("tree", treeModel, true)
+	tree.SetSelectable(true)
 
-	go func() {
-		err := testToken()
-		if err != nil {
-			formLogin := zUI.MakeFormLogin(zLayout, zData, zDraw)
-			i := 0
-			for {
-				i++
-				log.Printf("Login retry %v", i)
-				if i > 3 {
-					log.Printf("Used max retries: %v", i)
-					chOk <- false
-					return
-				}
-				log.Printf("Login - Will RunModal")
-				res, err := formLogin.RunModal(&root.Layoutable)
-				if err != nil {
-					log.Printf("Login - RunModal error:%v", err)
-					formLogin.SetValue("#statLabel", fmt.Sprintf("Login error: %v", err))
-					continue
-				}
-				log.Printf("Login - RunModal result:%v", res)
-				if res == FormOk {
-					err := login()
-					if err != nil {
-						log.Printf("Login error: %v", err)
-						formLogin.SetValue("#statLabel", fmt.Sprintf("Login error: %v", err))
-						continue
-					}
-					break
-				}
-			}
-		}
-		log.Printf("Token: %v", session.Data.Token)
+	go testAndLogin(&rootCanvas.Layoutable, chOk)
 
-		local.Data.User = session.Data.User
-		local.Data.Secret = session.Data.Secret
-		local.Save()
-
-		err = refreshMeta()
-		if err != nil {
-			log.Printf("Refresh meta error: %v", err)
-			chOk <- false
-			return
-		}
-		session.Save()
-
-		chOk <- true
-	}()
-
-	go func() {
-		b := <-chOk
-
-		if b {
-			//mainMenu := zUI.MakeMenuBar("mainMenu", menuList())
-			toolBar := zUI.MakeToolBar("toolBar")
-
-			fillToolBar(toolBar)
-
-			statusBar := zUI.MakeStatusBarPan("statusBar", 6)
-			statusBar.SetBackground("lightgrey")
-			statusText := zUI.MakeLabel("statusText", "Ready")
-			statusBar.Add("left", &statusText.Layoutable)
-
-			treeModel := zData.MakeTreeModel(zData.MakeAppRoot())
-			zData.AddMeta(treeModel)
-			tree := zUI.MakeTree("tree", treeModel, true)
-			defViews := zUI.MakeDefViews()
-			defViews.SetView(func(t *js.Object, i *js.Object) (v *js.Object) {
-				name := NewItem(i).Value().Get("name").String()
-				v = zDraw.MakeStringRender(name).Object()
-				return
-			})
-			tree.SetViewProvider(defViews)
-			tree.On("selected", func(src *js.Object, i *js.Object) {
-				v := NewTree(src).Selected().Value()
-				name := v.Get("name").String()
-				t := v.Get("type").String()
-				log.Println("Tree node cur selected:", name, t)
-			})
-
-			toolBar.On("./*", func(src *js.Object, arg1 *js.Object, arg2 *js.Object) {
-				//inspectObject("arg1", arg1, 0, 1)
-				//inspectObject("arg2", arg2, 0, 1)
-				//inspectObject("src.0", NewPanel(src, nil).Kids()[0], 0, 1)
-				ks := NewPanel(src, nil).Kids()
-				//log.Println("ToolBar button fired:", src.Get("id").String())
-				for i := range ks {
-					log.Println(i, ks[i].Get("id").String(), ks[i].Get("state").String())
-					if ks[i].Get("state").String() == "over" {
-						dispatchToolBarEvent(ks[i].Get("id").String())
-					}
-				}
-
-			})
-
-			textArea1 := zUI.MakeTextArea("textArea1", "A text1 ... ")
-			textArea2 := zUI.MakeTextArea("textArea2", "A text2 ... ")
-			tabs := zUI.MakeTabs("tabs", "top")
-			tabs.Add("Text1", &textArea1.Layoutable)
-			tabs.Add("Text2", &textArea2.Layoutable)
-
-			splitPan := zUI.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
-			splitPan.SetLeftMinSize(250)
-			splitPan.SetRightMinSize(250)
-			splitPan.SetGripperLoc(300)
-			splitPan.Properties("", js.M{
-				"padding": 6,
-			})
-			/*
-				button := zUI.MakeButton("button", "Clear")
-				button.PointerReleased(func(e *js.Object) {
-					log.Println("Click!", e)
-					NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
-				})
-			*/
-			root.Properties("", js.M{
-				"border":  "plain",
-				"padding": 8,
-				"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
-				"kids": js.M{
-					//"right":  button.Object(),
-					"top":    toolBar.Object(),
-					"center": splitPan.Object(),
-					"bottom": statusBar.Object(),
-				},
-			})
-		}
-	}()
+	go zUI.MakeMainUI(zLayout, zData, zDraw, &rootCanvas.Layoutable, chOk)
 
 }
 
@@ -231,6 +111,95 @@ func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDra
 	return
 }
 
+// MakeMainUI -
+func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, root *Layoutable, ch chan bool) {
+	b := <-ch
+
+	if b {
+
+		err := refreshMeta(zData)
+		if err != nil {
+			log.Printf("Refresh meta error: %v", err)
+			return
+		}
+
+		fillToolBar(toolBar)
+
+		statusBar.SetBackground("lightgrey")
+		statusText := ui.MakeLabel("statusText", "Ready")
+		statusBar.Add("left", &statusText.Layoutable)
+
+		defViews := ui.MakeDefViews()
+		defViews.SetView(func(t *js.Object, i *js.Object) (v *js.Object) {
+			name := NewItem(i).Value().Get("name").String()
+			v = zDraw.MakeStringRender(name).Object()
+			return
+		})
+		tree.SetViewProvider(defViews)
+		tree.On("selected", func(src *js.Object, i *js.Object) {
+			//log.Println("Tree node cur selected:", src)
+			s := NewTree(src).Selected()
+			if s.Object() != nil {
+				v := s.Value()
+				name := v.Get("name").String()
+				t := v.Get("type").String()
+				log.Println("Tree node cur selected:", name, t)
+				session.Data.Item = name + " " + t
+				session.Save()
+			}
+		})
+
+		toolBar.On("./*", func(src *js.Object, arg1 *js.Object, arg2 *js.Object) {
+			//inspectObject("arg1", arg1, 0, 1)
+			//inspectObject("arg2", arg2, 0, 1)
+			//inspectObject("src.0", NewPanel(src, nil).Kids()[0], 0, 1)
+			ks := NewPanel(src, nil).Kids()
+			//log.Println("ToolBar button fired:", src.Get("id").String())
+			for i := range ks {
+				log.Println(i, ks[i].Get("id").String(), ks[i].Get("state").String())
+				if ks[i].Get("state").String() == "over" {
+					dispatchToolBarEvent(zData, ks[i].Get("id").String())
+				}
+			}
+
+		})
+
+		textArea1 := ui.MakeTextArea("textArea1", "A text1 ... ")
+		textArea2 := ui.MakeTextArea("textArea2", "A text2 ... ")
+		tabs := ui.MakeTabs("tabs", "top")
+		tabs.Add("Text1", &textArea1.Layoutable)
+		tabs.Add("Text2", &textArea2.Layoutable)
+
+		splitPan := ui.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
+		splitPan.SetLeftMinSize(250)
+		splitPan.SetRightMinSize(250)
+		splitPan.SetGripperLoc(300)
+		splitPan.Properties("", js.M{
+			"padding": 6,
+		})
+		/*
+			button := zUI.MakeButton("button", "Clear")
+			button.PointerReleased(func(e *js.Object) {
+				log.Println("Click!", e)
+				NewTextArea(root.ByPath("#textArea1", nil)).SetValue("")
+			})
+		*/
+		rootCanvas.Properties("", js.M{
+			"border":  "plain",
+			"padding": 8,
+			"layout":  zLayout.MakeBorderLayout(6, 0).Object(),
+			"kids": js.M{
+				//"right":  button.Object(),
+				"top":    toolBar.Object(),
+				"center": splitPan.Object(),
+				"bottom": statusBar.Object(),
+			},
+		})
+
+		tree.RequestFocus()
+	}
+}
+
 // MakeAppRoot -
 func (data *PkgData) MakeAppRoot() (r *Item) {
 	r = data.MakeItem(
@@ -272,6 +241,7 @@ func (data *PkgData) AddTraits(model *TreeModel, traits *Item, body map[string]i
 	if !ok {
 		return
 	}
+	a = sortItems(a)
 	for _, v := range a {
 		name, ok := v.(map[string]interface{})["name"]
 		if !ok {
@@ -291,6 +261,7 @@ func (data *PkgData) AddRelations(model *TreeModel, relations *Item, body map[st
 	if !ok {
 		return
 	}
+	a = sortItems(a)
 	for _, v := range a {
 		name, ok := v.(map[string]interface{})["name"]
 		if !ok {

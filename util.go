@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	jsb "github.com/gopherjs/jsbuiltin"
 	xhr "github.com/rocketlaunchr/gopherjs-xhr"
+	"go4.org/sort"
 )
 
 // JSONstringify -
@@ -166,7 +168,7 @@ func post(uri string, r string) (response string, err error) {
 	return
 }
 
-func refreshMeta() (err error) {
+func refreshMeta(zData *PkgData) (err error) {
 	r := `{
 		"request": {
 			"command": "export",
@@ -180,9 +182,17 @@ func refreshMeta() (err error) {
 		"body": {}
 	}`
 
+	chOk := make(chan bool, 0)
+	go testAndLogin(&rootCanvas.Layoutable, chOk)
+	ok := <-chOk
+	if !ok {
+		return errors.New("test and login failed")
+	}
+
 	response, err := post("/api/run", r)
 	if err != nil {
 		log.Println(err)
+
 		return
 	}
 	log.Printf("Response:%s", response)
@@ -194,6 +204,34 @@ func refreshMeta() (err error) {
 	}
 	session.Data.Meta = meta
 	session.Save()
+
+	treeModel = zData.MakeTreeModel(zData.MakeAppRoot())
+	zData.AddMeta(treeModel)
+	tree.SetModel(treeModel)
+	//tree.Invalidate()
+	if len(session.Data.Item) > 0 {
+		tree.Select(findItemInTreeModel(treeModel, session.Data.Item))
+		//tree.Repaint()
+	}
+	//tree.Validate()
+
+	return
+}
+
+func sortItems(a []interface{}) (s []interface{}) {
+	sort.Slice(a, func(i, j int) (r bool) {
+		name1, ok := a[i].(map[string]interface{})["name"].(string)
+		if !ok {
+			name1 = "Noname"
+		}
+		name2, ok := a[j].(map[string]interface{})["name"].(string)
+		if !ok {
+			name1 = "Noname"
+		}
+		r = name1 < name2
+		return // family[i].Age < family[j].Age
+	})
+	s = a
 	return
 }
 
@@ -255,10 +293,10 @@ func addToolBarImage(toolBar *ToolBar, img string, id string) {
 	//p.Object().Set("fired", f)
 }
 
-func dispatchToolBarEvent(id string) {
+func dispatchToolBarEvent(zData *PkgData, id string) {
 	switch id {
 	case "tbRefresh":
-		go refreshMeta()
+		go refreshMeta(zData)
 	}
 }
 
@@ -299,4 +337,65 @@ func relationsToTreeModel(body map[string]interface{}) (model js.S) {
 		model = append(model, item)
 	}
 	return
+}
+
+func findItemInTreeModel(tm *TreeModel, find string) (item *Item) {
+	var name, t string
+	af := strings.Split(find, " ")
+	if len(af) > 1 {
+		name, t = af[0], af[1]
+	}
+
+	treeModel.Iterate(treeModel.Root(), func(i *js.Object) {
+		v := NewItem(i).Value()
+		if name == v.Get("name").String() && t == v.Get("type").String() {
+			item = NewItem(i)
+		}
+	})
+
+	if item != nil {
+		log.Println("Found item:", item.Value().Get("name").String(), item.Value().Get("type").String())
+	}
+
+	return
+}
+
+func testAndLogin(root *Layoutable, ch chan bool) {
+	err := testToken()
+	if err != nil {
+		i := 0
+		for {
+			i++
+			log.Printf("Login retry %v", i)
+			if i > 3 {
+				log.Printf("Used max retries: %v", i)
+				ch <- false
+				return
+			}
+			log.Printf("Login - Will RunModal")
+			res, err := formLogin.RunModal(root)
+			if err != nil {
+				log.Printf("Login - RunModal error:%v", err)
+				formLogin.SetValue("#statLabel", fmt.Sprintf("Login error: %v", err))
+				continue
+			}
+			log.Printf("Login - RunModal result:%v", res)
+			if res == FormOk {
+				err := login()
+				if err != nil {
+					log.Printf("Login error: %v", err)
+					formLogin.SetValue("#statLabel", fmt.Sprintf("Login error: %v", err))
+					continue
+				}
+				break
+			}
+		}
+	}
+	log.Printf("Token: %v", session.Data.Token)
+
+	local.Data.User = session.Data.User
+	local.Data.Secret = session.Data.Secret
+	local.Save()
+
+	ch <- true
 }

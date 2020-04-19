@@ -420,6 +420,18 @@ func (l *Layoutable) Remove(obj *js.Object) (r *Layoutable) {
 	return
 }
 
+// Invalidate -
+func (l *Layoutable) Invalidate() {
+	l.Object().Call("invalidate")
+	return
+}
+
+// Validate -
+func (l *Layoutable) Validate() {
+	l.Object().Call("validate")
+	return
+}
+
 // Fire -
 func (l *Layoutable) Fire(eventName string, params interface{}) {
 	l.Object().Call("fire", eventName, params)
@@ -480,6 +492,11 @@ func (p *Panel) SetFlowLayout(ax string, ay string, dir string, gap int) {
 // RequestFocus -
 func (p *Panel) RequestFocus() {
 	p.Object().Call("requestFocus")
+}
+
+// Repaint -
+func (p *Panel) Repaint() {
+	p.Object().Call("repaint")
 }
 
 // KeyTyped -
@@ -719,6 +736,12 @@ type BaseTree struct {
 	HostDecorativeViews
 }
 
+// SetModel -
+func (bt *BaseTree) SetModel(tm *TreeModel) {
+	bt.Object().Call("setModel", tm.Object())
+	return
+}
+
 // Selected -
 func (bt *BaseTree) Selected() (i *Item) {
 	i = NewItem(bt.Object().Get("selected"))
@@ -738,6 +761,16 @@ func (bt *BaseTree) On(eventName string, cb interface{}) {
 // Off -
 func (bt *BaseTree) Off(eventName string, cb interface{}) {
 	bt.Object().Call("off", eventName, cb)
+}
+
+// Select -
+func (bt *BaseTree) Select(item *Item) {
+	bt.Object().Call("select", item.Object())
+}
+
+// SetSelectable -
+func (bt *BaseTree) SetSelectable(b bool) {
+	bt.Object().Call("setSelectable", b)
 }
 
 // Tree -
@@ -826,6 +859,18 @@ func (tm *TreeModel) Add(to *Item, an *Item) {
 // Root -
 func (tm *TreeModel) Root() (root *Item) {
 	root = NewItem(tm.Object().Get("root"))
+	return
+}
+
+// FindOne -
+func (tm *TreeModel) FindOne(root *Item, value *js.Object) (item *Item) {
+	item = NewItem(tm.Object().Call("findOne", root.Object(), value))
+	return
+}
+
+// Iterate -
+func (tm *TreeModel) Iterate(root *Item, f interface{}) {
+	tm.Object().Call("iterate", root.Object(), f)
 	return
 }
 
