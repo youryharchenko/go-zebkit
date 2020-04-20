@@ -15,6 +15,7 @@ var toolBar *ToolBar
 var statusBar *StatusBarPan
 var tree *Tree
 var treeModel *TreeModel
+var tabs *Tabs
 
 func init() {
 	initResize()

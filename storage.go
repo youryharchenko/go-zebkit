@@ -17,10 +17,17 @@ type Local struct {
 
 // LocalData -
 type LocalData struct {
-	User    string    `json:"user"`
-	Secret  string    `json:"secret"`
-	Created time.Time `json:"created"`
-	Updated time.Time `json:"updated"`
+	User       string    `json:"user"`
+	Secret     string    `json:"secret"`
+	ObjQueries []*Query  `json:"obj-queries"`
+	Created    time.Time `json:"created"`
+	Updated    time.Time `json:"updated"`
+}
+
+// Query -
+type Query struct {
+	Name string `json:"name"`
+	Src  string `json:"src"`
 }
 
 // NewLocal -

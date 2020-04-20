@@ -72,7 +72,39 @@ func initSession() {
 
 func initLocal() {
 	local = OpenLocal()
+	local.Data.ObjQueries = makeObjQueries()
 	log.Printf("Open local storage")
+}
+
+func makeObjQueries() (qrs []*Query) {
+	qrs = []*Query{
+		{
+			Name: "Test",
+			Src: `{
+				"request": {
+					"command": "select",
+					"service": "object"
+				},
+				"db": {
+					"driver": "",
+					"connection": "",
+					"show": true
+				},
+				"body": {
+					"filter": {
+						"condition": "status = ?",
+						"params": [0]
+					},
+					"orderBy": "name asc",
+					"skip": 0,
+					"limit": 50,
+					"filterProps": "props.pay && props.pay.request.service == 'nparts'",
+					"fields": "{'name':obj.name,'terminal':obj.props.pay.request.terminalId,'amount':obj.props.pay.request.body.amount,'flag':true}"
+				}
+			}`,
+		},
+	}
+	return
 }
 
 func inspectObject(pref string, obj *js.Object, deep int, bound int) {
@@ -168,53 +200,21 @@ func post(uri string, r string) (response string, err error) {
 	return
 }
 
-func refreshMeta(zData *PkgData) (err error) {
-	r := `{
-		"request": {
-			"command": "export",
-			"service": "meta"
-		},
-		"db": {
-			"driver": "",
-			"connection": "",
-			"show": true
-		},
-		"body": {}
-	}`
+func runQuery(src string) (response string, err error) {
 
 	chOk := make(chan bool, 0)
 	go testAndLogin(&rootCanvas.Layoutable, chOk)
 	ok := <-chOk
 	if !ok {
-		return errors.New("test and login failed")
+		err = errors.New("test and login failed")
+		return
 	}
 
-	response, err := post("/api/run", r)
+	response, err = post("/api/run", src)
 	if err != nil {
 		log.Println(err)
-
 		return
 	}
-	log.Printf("Response:%s", response)
-
-	meta := js.M{}
-	err = json.Unmarshal([]byte(response), &meta)
-	if err != nil {
-		return
-	}
-	session.Data.Meta = meta
-	session.Save()
-
-	treeModel = zData.MakeTreeModel(zData.MakeAppRoot())
-	zData.AddMeta(treeModel)
-	tree.SetModel(treeModel)
-	//tree.Invalidate()
-	if len(session.Data.Item) > 0 {
-		tree.Select(findItemInTreeModel(treeModel, session.Data.Item))
-		//tree.Repaint()
-	}
-	//tree.Validate()
-
 	return
 }
 
@@ -235,6 +235,7 @@ func sortItems(a []interface{}) (s []interface{}) {
 	return
 }
 
+/*
 func makeTreeModel() (tm js.M) {
 
 	tm = js.M{
@@ -281,9 +282,10 @@ func makeTreeModel() (tm js.M) {
 	}
 	return
 }
-
+*/
 func fillToolBar(toolBar *ToolBar) {
 	addToolBarImage(toolBar, "images/24/gtk-refresh.png", "tbRefresh")
+	addToolBarImage(toolBar, "images/24/stock_media-play.png", "tbRun")
 	addToolBarImage(toolBar, "images/24/gnome-logout.png", "tbLogout")
 }
 
@@ -293,13 +295,7 @@ func addToolBarImage(toolBar *ToolBar, img string, id string) {
 	//p.Object().Set("fired", f)
 }
 
-func dispatchToolBarEvent(zData *PkgData, id string) {
-	switch id {
-	case "tbRefresh":
-		go refreshMeta(zData)
-	}
-}
-
+/*
 func traitsToTreeModel(body map[string]interface{}) (model js.S) {
 	//relations, ok := body["relations"].([]interface{})
 	//if !ok {
@@ -338,7 +334,7 @@ func relationsToTreeModel(body map[string]interface{}) (model js.S) {
 	}
 	return
 }
-
+*/
 func findItemInTreeModel(tm *TreeModel, find string) (item *Item) {
 	var name, t string
 	af := strings.Split(find, " ")

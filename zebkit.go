@@ -169,6 +169,14 @@ func (ui *PkgUI) MakeDefViews() (dv *DefViews) {
 	return
 }
 
+// MakeGrid -
+func (ui *PkgUI) MakeGrid(id string, model interface{}) (t *Grid) {
+	o := ui.Obj.Get("grid").Get("Grid").New(model)
+	setID(o, id)
+	t = NewGrid(o)
+	return
+}
+
 // MakeTabs -
 func (ui *PkgUI) MakeTabs(id string, orient string) (t *Tabs) {
 	o := ui.Obj.Get("Tabs").New(orient)
@@ -788,6 +796,23 @@ func NewTree(obj *js.Object) (t *Tree) {
 // SetViewProvider -
 func (t *Tree) SetViewProvider(p *DefViews) {
 	t.Object().Call("setViewProvider", p)
+}
+
+// Grid -
+type Grid struct {
+	Panel
+}
+
+// NewGrid -
+func NewGrid(obj *js.Object) (t *Grid) {
+	t = &Grid{}
+	t.Obj = obj
+	return
+}
+
+// SetModel -
+func (g *Grid) SetModel(m interface{}) {
+	g.Object().Call("setModel", m)
 }
 
 // Tabs -

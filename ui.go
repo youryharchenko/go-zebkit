@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -78,21 +80,11 @@ func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDra
 	root.Add("center", &buttonOK.Layoutable)
 	buttonOK.Fired(fnOk)
 
-	//log.Printf("status.Kids len:%v", len(status.Kids()))
 	status.Remove(status.Kids()[0])
 	status.SetFlowLayout("center", "center", "horizontal", 4)
-	//status.SetBackground("grey")
-	//log.Printf("status.Kids len:%v", len(status.Kids()))
 
 	statLabel := ui.MakeLabel("statLabel", "Ready")
-	//statLabel.SetBackground("white")
 	status.Add("center", &statLabel.Layoutable)
-
-	//log.Printf("status.Kids len:%v", len(status.Kids()))
-
-	//inspectObject("status.Kids.0", status.Kids()[0], 0, 1)
-	//statLabel := NewLabel(status.Kids()[0])
-	//statLabel.SetID("statLabel")
 
 	close := NewButton(buttons.Kids()[0])
 	close.Fired(fnClose)
@@ -117,9 +109,9 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 
 	if b {
 
-		err := refreshMeta(zData)
+		err := ui.RefreshTree(zData)
 		if err != nil {
-			log.Printf("Refresh meta error: %v", err)
+			log.Printf("Refresh tree error: %v", err)
 			return
 		}
 
@@ -150,25 +142,20 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 		})
 
 		toolBar.On("./*", func(src *js.Object, arg1 *js.Object, arg2 *js.Object) {
-			//inspectObject("arg1", arg1, 0, 1)
-			//inspectObject("arg2", arg2, 0, 1)
-			//inspectObject("src.0", NewPanel(src, nil).Kids()[0], 0, 1)
 			ks := NewPanel(src, nil).Kids()
-			//log.Println("ToolBar button fired:", src.Get("id").String())
 			for i := range ks {
 				log.Println(i, ks[i].Get("id").String(), ks[i].Get("state").String())
 				if ks[i].Get("state").String() == "over" {
-					dispatchToolBarEvent(zData, ks[i].Get("id").String())
+					ui.DispatchToolBarEvent(zData, ks[i].Get("id").String())
 				}
 			}
-
 		})
 
-		textArea1 := ui.MakeTextArea("textArea1", "A text1 ... ")
-		textArea2 := ui.MakeTextArea("textArea2", "A text2 ... ")
-		tabs := ui.MakeTabs("tabs", "top")
-		tabs.Add("Text1", &textArea1.Layoutable)
-		tabs.Add("Text2", &textArea2.Layoutable)
+		//textArea1 := ui.MakeTextArea("textArea1", "A text1 ... ")
+		//textArea2 := ui.MakeTextArea("textArea2", "A text2 ... ")
+		tabs = ui.MakeTabs("tabs", "top")
+		//tabs.Add("Text1", &textArea1.Layoutable)
+		//tabs.Add("Text2", &textArea2.Layoutable)
 
 		splitPan := ui.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
 		splitPan.SetLeftMinSize(250)
@@ -198,6 +185,128 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 
 		tree.RequestFocus()
 	}
+}
+
+// DispatchToolBarEvent -
+func (ui *PkgUI) DispatchToolBarEvent(zData *PkgData, id string) {
+	switch id {
+	case "tbRefresh":
+		go ui.RefreshTree(zData)
+	case "tbRun":
+		go ui.DispatchQuery(zData)
+	}
+}
+
+// DispatchQuery -
+func (ui *PkgUI) DispatchQuery(zData *PkgData) {
+	item := findItemInTreeModel(treeModel, session.Data.Item)
+	if item == nil {
+		return
+	}
+	v := item.Value()
+	if v == nil {
+		return
+	}
+	name, t, qry := v.Get("name").String(), v.Get("type").String(), v.Get("data").Interface()
+	switch t {
+	case "obj-query":
+		src, ok := qry.(map[string]interface{})["src"].(string)
+		if !ok {
+			return
+		}
+		log.Println("runQuery:", name, t)
+		response, err := runQuery(src)
+		if err != nil {
+			log.Println("runQuery error:", err)
+		}
+		log.Printf("Request:\n%s,\nResponse:\n%s", src, response)
+		ui.MakeQryTabGrid(name, src, response)
+	default:
+		return
+	}
+}
+
+// MakeQryTabGrid -response
+func (ui *PkgUI) MakeQryTabGrid(name string, src string, response string) {
+	respMap := map[string]interface{}{}
+	err := json.Unmarshal([]byte(response), &respMap)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	result, ok := respMap["result"].([]interface{})
+	if !ok {
+		log.Println("result is missing")
+		return
+	}
+
+	a := []interface{}{}
+	for _, r := range result {
+		rMap := r.(map[string]interface{})
+		row := []interface{}{}
+		for _, c := range rMap {
+			row = append(row, c)
+		}
+		a = append(a, row)
+	}
+
+	obj := rootCanvas.ByPath("#"+name, nil)
+	if obj == nil {
+		tabs.Add(name, &ui.MakeGrid(name, a).Layoutable)
+	} else {
+		NewGrid(obj).SetModel(a)
+	}
+}
+
+// RefreshTree -
+func (ui *PkgUI) RefreshTree(zData *PkgData) (err error) {
+	r := `{
+		"request": {
+			"command": "export",
+			"service": "meta"
+		},
+		"db": {
+			"driver": "",
+			"connection": "",
+			"show": true
+		},
+		"body": {}
+	}`
+
+	chOk := make(chan bool, 0)
+	go testAndLogin(&rootCanvas.Layoutable, chOk)
+	ok := <-chOk
+	if !ok {
+		return errors.New("test and login failed")
+	}
+
+	response, err := post("/api/run", r)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Printf("Response:%s", response)
+
+	meta := js.M{}
+	err = json.Unmarshal([]byte(response), &meta)
+	if err != nil {
+		return
+	}
+	session.Data.Meta = meta
+	session.Save()
+
+	treeModel = zData.MakeTreeModel(zData.MakeAppRoot())
+	zData.AddMeta(treeModel)
+	zData.AddObjects(treeModel)
+	tree.SetModel(treeModel)
+	//tree.Invalidate()
+	if len(session.Data.Item) > 0 {
+		tree.Select(findItemInTreeModel(treeModel, session.Data.Item))
+		//tree.Repaint()
+	}
+	//tree.Validate()
+
+	return
 }
 
 // MakeAppRoot -
@@ -232,6 +341,34 @@ func (data *PkgData) AddMeta(model *TreeModel) (err error) {
 
 	data.AddTraits(model, traits, body)
 	data.AddRelations(model, relations, body)
+	return
+}
+
+// AddObjects -
+func (data *PkgData) AddObjects(model *TreeModel) (err error) {
+	root := model.Root()
+	objects := data.MakeItem(
+		js.M{"name": "Objects", "type": "section"},
+	)
+	model.Add(root, objects)
+
+	a := []interface{}{}
+	for _, v := range local.Data.ObjQueries {
+		i := map[string]interface{}{"name": v.Name, "src": v.Src}
+		a = append(a, i)
+	}
+	a = sortItems(a)
+	for _, v := range a {
+		name, ok := v.(map[string]interface{})["name"]
+		if !ok {
+			name = "Noname"
+		}
+		item := data.MakeItem(
+			js.M{"name": name, "type": "obj-query", "data": v},
+		)
+		model.Add(objects, item)
+	}
+
 	return
 }
 
