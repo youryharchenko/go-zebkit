@@ -154,6 +154,14 @@ func (ui *PkgUI) MakeSplitPan(id string, first *Panel, second *Panel, orient str
 	return
 }
 
+// MakeScrollPan -
+func (ui *PkgUI) MakeScrollPan(id string, c *Panel, scrolls string, autoHide bool) (sp *ScrollPan) {
+	o := ui.Obj.Get("ScrollPan").New(c.Object(), scrolls, autoHide)
+	setID(o, id)
+	sp = NewScrollPan(o)
+	return
+}
+
 // MakeTree -
 func (ui *PkgUI) MakeTree(id string, model *TreeModel, b bool) (t *Tree) {
 	o := ui.Obj.Get("tree").Get("Tree").New(model.Object(), b)
@@ -170,10 +178,26 @@ func (ui *PkgUI) MakeDefViews() (dv *DefViews) {
 }
 
 // MakeGrid -
-func (ui *PkgUI) MakeGrid(id string, model interface{}) (t *Grid) {
+func (ui *PkgUI) MakeGrid(id string, model interface{}) (g *Grid) {
 	o := ui.Obj.Get("grid").Get("Grid").New(model)
 	setID(o, id)
-	t = NewGrid(o)
+	g = NewGrid(o)
+	return
+}
+
+// MakeGridCaption -
+func (ui *PkgUI) MakeGridCaption(id string, titles []interface{}) (gc *GridCaption) {
+	o := ui.Obj.Get("grid").Get("GridCaption").New(titles)
+	setID(o, id)
+	gc = NewGridCaption(o)
+	return
+}
+
+// MakeGridStretchPan -
+func (ui *PkgUI) MakeGridStretchPan(id string, grid *Grid) (gs *GridStretchPan) {
+	o := ui.Obj.Get("grid").Get("GridStretchPan").New(grid.Object())
+	setID(o, id)
+	gs = NewGridStretchPan(o)
 	return
 }
 
@@ -517,6 +541,18 @@ func (p *Panel) ChildKeyTyped(f interface{}) {
 	p.Object().Set("childKeyTyped", f)
 }
 
+// ScrollPan -
+type ScrollPan struct {
+	Panel
+}
+
+// NewScrollPan -
+func NewScrollPan(obj *js.Object) (sc *ScrollPan) {
+	sc = &ScrollPan{}
+	sc.Obj = obj
+	return
+}
+
 // ToolBar -
 type ToolBar struct {
 	Panel
@@ -804,15 +840,45 @@ type Grid struct {
 }
 
 // NewGrid -
-func NewGrid(obj *js.Object) (t *Grid) {
-	t = &Grid{}
-	t.Obj = obj
+func NewGrid(obj *js.Object) (g *Grid) {
+	g = &Grid{}
+	g.Obj = obj
 	return
 }
 
 // SetModel -
 func (g *Grid) SetModel(m interface{}) {
 	g.Object().Call("setModel", m)
+}
+
+// BaseCaption -
+type BaseCaption struct {
+	Panel
+	EventProducer
+}
+
+// GridCaption -
+type GridCaption struct {
+	BaseCaption
+}
+
+// NewGridCaption -
+func NewGridCaption(obj *js.Object) (gc *GridCaption) {
+	gc = &GridCaption{}
+	gc.Obj = obj
+	return
+}
+
+// GridStretchPan -
+type GridStretchPan struct {
+	Panel
+}
+
+// NewGridStretchPan -
+func NewGridStretchPan(obj *js.Object) (gs *GridStretchPan) {
+	gs = &GridStretchPan{}
+	gs.Obj = obj
+	return
 }
 
 // Tabs -

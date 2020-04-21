@@ -26,8 +26,10 @@ type LocalData struct {
 
 // Query -
 type Query struct {
-	Name string `json:"name"`
-	Src  string `json:"src"`
+	Name   string                 `json:"name"`
+	Path   string                 `json:"path"`
+	View   map[string]interface{} `json:"view"`
+	Source map[string]interface{} `json:"source"`
 }
 
 // NewLocal -

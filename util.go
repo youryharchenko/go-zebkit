@@ -77,31 +77,46 @@ func initLocal() {
 }
 
 func makeObjQueries() (qrs []*Query) {
+	src := `{
+		"request": {
+			"command": "select",
+			"service": "object"
+		},
+		"db": {
+			"driver": "",
+			"connection": "",
+			"show": true
+		},
+		"body": {
+			"filter": {
+				"condition": "status = ?",
+				"params": [0]
+			},
+			"orderBy": "name asc",
+			"skip": 0,
+			"limit": 50,
+			"filterProps": "props.pay && props.pay.request.service == 'nparts'",
+			"fields": "{'name':obj.name,'terminal':obj.props.pay.request.terminalId,'amount':obj.props.pay.request.body.amount,'flag':true}"
+		}
+	}`
+	view := `{
+		"columns":["name", "terminal", "amount", "flag"]
+	}`
+	srcMap := map[string]interface{}{}
+	err := json.Unmarshal([]byte(src), &srcMap)
+	if err != nil {
+		log.Println(err)
+	}
+	viewMap := map[string]interface{}{}
+	err = json.Unmarshal([]byte(view), &viewMap)
+	if err != nil {
+		log.Println(err)
+	}
 	qrs = []*Query{
 		{
-			Name: "Test",
-			Src: `{
-				"request": {
-					"command": "select",
-					"service": "object"
-				},
-				"db": {
-					"driver": "",
-					"connection": "",
-					"show": true
-				},
-				"body": {
-					"filter": {
-						"condition": "status = ?",
-						"params": [0]
-					},
-					"orderBy": "name asc",
-					"skip": 0,
-					"limit": 50,
-					"filterProps": "props.pay && props.pay.request.service == 'nparts'",
-					"fields": "{'name':obj.name,'terminal':obj.props.pay.request.terminalId,'amount':obj.props.pay.request.body.amount,'flag':true}"
-				}
-			}`,
+			Name:   "Test",
+			Source: srcMap,
+			View:   viewMap,
 		},
 	}
 	return

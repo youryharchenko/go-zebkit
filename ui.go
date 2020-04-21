@@ -157,7 +157,9 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 		//tabs.Add("Text1", &textArea1.Layoutable)
 		//tabs.Add("Text2", &textArea2.Layoutable)
 
-		splitPan := ui.MakeSplitPan("splitPan", &tree.Panel, &tabs.Panel, "vertical")
+		scrollTreePan := ui.MakeScrollPan("treeScrollPan", &tree.Panel, "vertical", true)
+
+		splitPan := ui.MakeSplitPan("splitPan", &scrollTreePan.Panel, &tabs.Panel, "vertical")
 		splitPan.SetLeftMinSize(250)
 		splitPan.SetRightMinSize(250)
 		splitPan.SetGripperLoc(300)
@@ -210,33 +212,56 @@ func (ui *PkgUI) DispatchQuery(zData *PkgData) {
 	name, t, qry := v.Get("name").String(), v.Get("type").String(), v.Get("data").Interface()
 	switch t {
 	case "obj-query":
-		src, ok := qry.(map[string]interface{})["src"].(string)
+		srcMap, ok := qry.(map[string]interface{})["source"].(map[string]interface{})
 		if !ok {
+			log.Println("DispatchQuery error:", errors.New("source is missing"))
 			return
 		}
+		viewMap, ok := qry.(map[string]interface{})["view"].(map[string]interface{})
+		if !ok {
+			log.Println("DispatchQuery error:", errors.New("view is missing"))
+			return
+		}
+
+		buf, err := json.Marshal(srcMap)
+		if err != nil {
+			log.Println("DispatchQuery error:", err)
+			return
+		}
+		src := string(buf)
+
 		log.Println("runQuery:", name, t)
 		response, err := runQuery(src)
 		if err != nil {
 			log.Println("runQuery error:", err)
+			return
 		}
 		log.Printf("Request:\n%s,\nResponse:\n%s", src, response)
-		ui.MakeQryTabGrid(name, src, response)
+
+		respMap := map[string]interface{}{}
+		err = json.Unmarshal([]byte(response), &respMap)
+		if err != nil {
+			log.Println("DispatchQuery error:", err)
+			return
+		}
+		ui.MakeQryTabGrid(name, srcMap, viewMap, respMap)
 	default:
 		return
 	}
 }
 
 // MakeQryTabGrid -response
-func (ui *PkgUI) MakeQryTabGrid(name string, src string, response string) {
-	respMap := map[string]interface{}{}
-	err := json.Unmarshal([]byte(response), &respMap)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	result, ok := respMap["result"].([]interface{})
+func (ui *PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, view map[string]interface{}, resp map[string]interface{}) {
+
+	result, ok := resp["result"].([]interface{})
 	if !ok {
 		log.Println("result is missing")
+		return
+	}
+
+	titles, ok := view["columns"].([]interface{})
+	if !ok {
+		log.Println("view.columns is missing")
 		return
 	}
 
@@ -244,7 +269,11 @@ func (ui *PkgUI) MakeQryTabGrid(name string, src string, response string) {
 	for _, r := range result {
 		rMap := r.(map[string]interface{})
 		row := []interface{}{}
-		for _, c := range rMap {
+		for _, t := range titles {
+			c, ok := rMap[t.(string)]
+			if !ok {
+				c = "undefined"
+			}
 			row = append(row, c)
 		}
 		a = append(a, row)
@@ -252,7 +281,12 @@ func (ui *PkgUI) MakeQryTabGrid(name string, src string, response string) {
 
 	obj := rootCanvas.ByPath("#"+name, nil)
 	if obj == nil {
-		tabs.Add(name, &ui.MakeGrid(name, a).Layoutable)
+		grid := ui.MakeGrid(name, a)
+		gridStrPan := ui.MakeGridStretchPan(name+"StretchPan", grid)
+		gridCaption := ui.MakeGridCaption(name+"Caption", titles)
+		grid.Add("top", &gridCaption.Layoutable)
+		scrollPan := ui.MakeScrollPan(name+"ScrollPan", &gridStrPan.Panel, "vertical", true)
+		tabs.Add(name, &scrollPan.Layoutable)
 	} else {
 		NewGrid(obj).SetModel(a)
 	}
@@ -353,8 +387,8 @@ func (data *PkgData) AddObjects(model *TreeModel) (err error) {
 	model.Add(root, objects)
 
 	a := []interface{}{}
-	for _, v := range local.Data.ObjQueries {
-		i := map[string]interface{}{"name": v.Name, "src": v.Src}
+	for _, q := range local.Data.ObjQueries {
+		i := map[string]interface{}{"name": q.Name, "source": q.Source, "view": q.View}
 		a = append(a, i)
 	}
 	a = sortItems(a)
