@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+
+	"github.com/youryharchenko/go-zebkit/zkit"
 )
 
 // FormResult -
@@ -16,32 +18,32 @@ const (
 
 // Form -
 type Form struct {
-	Win      *Window
-	Root     *Panel
-	Status   *Panel
-	Buttons  *Panel
-	Focus    *Panel
+	Win      *zkit.Window
+	Root     *zkit.Panel
+	Status   *zkit.Panel
+	Buttons  *zkit.Panel
+	Focus    *zkit.Panel
 	ChResult chan FormResult
 }
 
 // NewForm -
-func NewForm(win *Window, w int, h int, sizeable bool) (form *Form) {
+func NewForm(win *zkit.Window, w int, h int, sizeable bool) (form *zkit.Form) {
 	//win := NewWindow(obj)
 	win.Layoutable.SetSize(w, h)
 	win.SetSizeable(sizeable)
 
 	form = &Form{
 		Win:      win,
-		Root:     NewPanel(win.Object().Get("root"), nil),
-		Status:   NewPanel(win.Object().Get("status"), nil),
-		Buttons:  NewPanel(win.Object().Get("buttons"), nil),
+		Root:     zkit.NewPanel(win.Object().Get("root"), nil),
+		Status:   zkit.NewPanel(win.Object().Get("status"), nil),
+		Buttons:  zkit.NewPanel(win.Object().Get("buttons"), nil),
 		ChResult: make(chan FormResult, 0),
 	}
 	return
 }
 
 // RunModal -
-func (form *Form) RunModal(parent *Layoutable) (res FormResult, err error) {
+func (form *Form) RunModal(parent *zkit.Layoutable) (res FormResult, err error) {
 	log.Printf("Login - RunModal started")
 
 	parent.SetByConstraints("center", &form.Win.Layoutable)

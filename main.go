@@ -1,28 +1,30 @@
 package main
 
-var zebkit *Zebkit
+import "github.com/youryharchenko/go-zebkit/zkit"
+
+var zebkit *zkit.Zebkit
 var innerWidth int
 var innerHeight int
 
 var session *Session
 var local *Local
 
-var rootCanvas *Panel
+var rootCanvas *zkit.Panel
 
 var formLogin *Form
 
-var toolBar *ToolBar
-var statusBar *StatusBarPan
-var tree *Tree
-var treeModel *TreeModel
-var tabs *Tabs
+var toolBar *zkit.ToolBar
+var statusBar *zkit.StatusBarPan
+var tree *zkit.Tree
+var treeModel *zkit.TreeModel
+var tabs *zkit.Tabs
 
 func init() {
 	initResize()
 	initLocal()
 	initSession()
 
-	zebkit = NewZebkit()
+	zebkit = zkit.NewZebkit()
 	zebkit.UIConfig("theme", "light")
 }
 

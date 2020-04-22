@@ -1,4 +1,4 @@
-package main
+package zkit
 
 import (
 	"log"
@@ -63,7 +63,7 @@ func (ui *PkgUI) MakeCanvas(name string, w int, h int) (c *Canvas) {
 	} else {
 		c = NewCanvas(o.New(name, w, h))
 	}
-	zebkit.Canvas = c
+
 	return
 }
 

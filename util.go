@@ -11,18 +11,13 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	jsb "github.com/gopherjs/jsbuiltin"
 	xhr "github.com/rocketlaunchr/gopherjs-xhr"
+	"github.com/youryharchenko/go-zebkit/zkit"
 	"go4.org/sort"
 )
 
 // JSONstringify -
 func JSONstringify(obj *js.Object) string {
 	return js.Global.Get("JSON").Call("stringify", obj).String()
-}
-
-func setID(obj *js.Object, id string) {
-	if len(id) > 0 {
-		obj.Call("setId", id)
-	}
 }
 
 func initResize() {
@@ -298,13 +293,13 @@ func makeTreeModel() (tm js.M) {
 	return
 }
 */
-func fillToolBar(toolBar *ToolBar) {
+func fillToolBar(toolBar *zkit.ToolBar) {
 	addToolBarImage(toolBar, "images/24/gtk-refresh.png", "tbRefresh")
 	addToolBarImage(toolBar, "images/24/stock_media-play.png", "tbRun")
 	addToolBarImage(toolBar, "images/24/gnome-logout.png", "tbLogout")
 }
 
-func addToolBarImage(toolBar *ToolBar, img string, id string) {
+func addToolBarImage(toolBar *zkit.ToolBar, img string, id string) {
 	p := toolBar.AddImage(img)
 	p.SetID(id)
 	//p.Object().Set("fired", f)
@@ -350,7 +345,7 @@ func relationsToTreeModel(body map[string]interface{}) (model js.S) {
 	return
 }
 */
-func findItemInTreeModel(tm *TreeModel, find string) (item *Item) {
+func findItemInTreeModel(tm *zkit.TreeModel, find string) (item *zkit.Item) {
 	var name, t string
 	af := strings.Split(find, " ")
 	if len(af) > 1 {
@@ -358,9 +353,9 @@ func findItemInTreeModel(tm *TreeModel, find string) (item *Item) {
 	}
 
 	treeModel.Iterate(treeModel.Root(), func(i *js.Object) {
-		v := NewItem(i).Value()
+		v := zkit.NewItem(i).Value()
 		if name == v.Get("name").String() && t == v.Get("type").String() {
-			item = NewItem(i)
+			item = zkit.NewItem(i)
 		}
 	})
 
@@ -371,7 +366,7 @@ func findItemInTreeModel(tm *TreeModel, find string) (item *Item) {
 	return
 }
 
-func testAndLogin(root *Layoutable, ch chan bool) {
+func testAndLogin(root *zkit.Layoutable, ch chan bool) {
 	err := testToken()
 	if err != nil {
 		i := 0

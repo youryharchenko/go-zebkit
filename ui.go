@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/youryharchenko/go-zebkit/zkit"
 )
 
 // BuildUI -
@@ -13,8 +14,9 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 
 	chOk := make(chan bool, 0)
 
-	zUI, zLayout, zData, zDraw := NewPkgUI(ui), NewPkgLayout(layout), NewPkgData(data), NewPkgDraw(draw)
-	rootCanvas = zUI.MakeCanvas("z", innerWidth, innerHeight).Root()
+	zUI, zLayout, zData, zDraw := zkit.NewPkgUI(ui), zkit.NewPkgLayout(layout), zkit.NewPkgData(data), zkit.NewPkgDraw(draw)
+	zebkit.Canvas = zUI.MakeCanvas("z", innerWidth, innerHeight)
+	rootCanvas = zebkit.Canvas.Root()
 
 	formLogin = zUI.MakeFormLogin(zLayout, zData, zDraw)
 	toolBar = zUI.MakeToolBar("toolBar")
@@ -31,7 +33,7 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 }
 
 // MakeFormLogin -
-func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw) (form *Form) {
+func (ui *zkit.PkgUI) MakeFormLogin(zLayout *zkit.PkgLayout, zData *zkit.PkgData, zDraw *zkit.PkgDraw) (form *Form) {
 
 	form = NewForm(ui.MakeWindow("formLogin", "Login", nil), 300, 225, false)
 
@@ -86,11 +88,11 @@ func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDra
 	statLabel := ui.MakeLabel("statLabel", "Ready")
 	status.Add("center", &statLabel.Layoutable)
 
-	close := NewButton(buttons.Kids()[0])
+	close := zkit.NewButton(buttons.Kids()[0])
 	close.Fired(fnClose)
 
 	form.ChildKeyTyped(func(key *js.Object) {
-		k := NewKeyEvent(key)
+		k := zkit.NewKeyEvent(key)
 		log.Printf("KeyTyped:%v", k.Code())
 		switch k.Code() {
 		case "Enter":
@@ -104,7 +106,7 @@ func (ui *PkgUI) MakeFormLogin(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDra
 }
 
 // MakeMainUI -
-func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, root *Layoutable, ch chan bool) {
+func (ui *zkit.PkgUI) MakeMainUI(zLayout *zkit.PkgLayout, zData *zkit.PkgData, zDraw *zkit.PkgDraw, root *zkit.Layoutable, ch chan bool) {
 	b := <-ch
 
 	if b {
@@ -123,14 +125,14 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 
 		defViews := ui.MakeDefViews()
 		defViews.SetView(func(t *js.Object, i *js.Object) (v *js.Object) {
-			name := NewItem(i).Value().Get("name").String()
+			name := zkit.NewItem(i).Value().Get("name").String()
 			v = zDraw.MakeStringRender(name).Object()
 			return
 		})
 		tree.SetViewProvider(defViews)
 		tree.On("selected", func(src *js.Object, i *js.Object) {
 			//log.Println("Tree node cur selected:", src)
-			s := NewTree(src).Selected()
+			s := zkit.NewTree(src).Selected()
 			if s.Object() != nil {
 				v := s.Value()
 				name := v.Get("name").String()
@@ -142,7 +144,7 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 		})
 
 		toolBar.On("./*", func(src *js.Object, arg1 *js.Object, arg2 *js.Object) {
-			ks := NewPanel(src, nil).Kids()
+			ks := zkit.NewPanel(src, nil).Kids()
 			for i := range ks {
 				log.Println(i, ks[i].Get("id").String(), ks[i].Get("state").String())
 				if ks[i].Get("state").String() == "over" {
@@ -190,7 +192,7 @@ func (ui *PkgUI) MakeMainUI(zLayout *PkgLayout, zData *PkgData, zDraw *PkgDraw, 
 }
 
 // DispatchToolBarEvent -
-func (ui *PkgUI) DispatchToolBarEvent(zData *PkgData, id string) {
+func (ui *zkit.PkgUI) DispatchToolBarEvent(zData *zkit.PkgData, id string) {
 	switch id {
 	case "tbRefresh":
 		go ui.RefreshTree(zData)
@@ -200,7 +202,7 @@ func (ui *PkgUI) DispatchToolBarEvent(zData *PkgData, id string) {
 }
 
 // DispatchQuery -
-func (ui *PkgUI) DispatchQuery(zData *PkgData) {
+func (ui *zkit.PkgUI) DispatchQuery(zData *zkit.PkgData) {
 	item := findItemInTreeModel(treeModel, session.Data.Item)
 	if item == nil {
 		return
@@ -251,7 +253,7 @@ func (ui *PkgUI) DispatchQuery(zData *PkgData) {
 }
 
 // MakeQryTabGrid -response
-func (ui *PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, view map[string]interface{}, resp map[string]interface{}) {
+func (ui *zkit.PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, view map[string]interface{}, resp map[string]interface{}) {
 
 	result, ok := resp["result"].([]interface{})
 	if !ok {
@@ -288,12 +290,12 @@ func (ui *PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, view ma
 		scrollPan := ui.MakeScrollPan(name+"ScrollPan", &gridStrPan.Panel, "vertical", true)
 		tabs.Add(name, &scrollPan.Layoutable)
 	} else {
-		NewGrid(obj).SetModel(a)
+		zkit.NewGrid(obj).SetModel(a)
 	}
 }
 
 // RefreshTree -
-func (ui *PkgUI) RefreshTree(zData *PkgData) (err error) {
+func (ui *zkit.PkgUI) RefreshTree(zData *zkit.PkgData) (err error) {
 	r := `{
 		"request": {
 			"command": "export",
@@ -344,7 +346,7 @@ func (ui *PkgUI) RefreshTree(zData *PkgData) (err error) {
 }
 
 // MakeAppRoot -
-func (data *PkgData) MakeAppRoot() (r *Item) {
+func (data *zkit.PkgData) MakeAppRoot() (r *zkit.Item) {
 	r = data.MakeItem(
 		js.M{"name": "Application", "type": "app"},
 	)
@@ -352,7 +354,7 @@ func (data *PkgData) MakeAppRoot() (r *Item) {
 }
 
 // AddMeta -
-func (data *PkgData) AddMeta(model *TreeModel) (err error) {
+func (data *zkit.PkgData) AddMeta(model *zkit.TreeModel) (err error) {
 	root := model.Root()
 	meta := data.MakeItem(
 		js.M{"name": "Meta", "type": "section"},
@@ -379,7 +381,7 @@ func (data *PkgData) AddMeta(model *TreeModel) (err error) {
 }
 
 // AddObjects -
-func (data *PkgData) AddObjects(model *TreeModel) (err error) {
+func (data *zkit.PkgData) AddObjects(model *zkit.TreeModel) (err error) {
 	root := model.Root()
 	objects := data.MakeItem(
 		js.M{"name": "Objects", "type": "section"},
@@ -407,7 +409,7 @@ func (data *PkgData) AddObjects(model *TreeModel) (err error) {
 }
 
 // AddTraits -
-func (data *PkgData) AddTraits(model *TreeModel, traits *Item, body map[string]interface{}) (err error) {
+func (data *zkit.PkgData) AddTraits(model *zkit.TreeModel, traits *zkit.Item, body map[string]interface{}) (err error) {
 	a, ok := body["traits"].([]interface{})
 	if !ok {
 		return
@@ -427,7 +429,7 @@ func (data *PkgData) AddTraits(model *TreeModel, traits *Item, body map[string]i
 }
 
 // AddRelations -
-func (data *PkgData) AddRelations(model *TreeModel, relations *Item, body map[string]interface{}) (err error) {
+func (data *zkit.PkgData) AddRelations(model *zkit.TreeModel, relations *zkit.Item, body map[string]interface{}) (err error) {
 	a, ok := body["relations"].([]interface{})
 	if !ok {
 		return
