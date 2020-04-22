@@ -18,24 +18,24 @@ func BuildUI(ui *js.Object, layout *js.Object, data *js.Object, draw *js.Object)
 	zebkit.Canvas = zUI.MakeCanvas("z", innerWidth, innerHeight)
 	rootCanvas = zebkit.Canvas.Root()
 
-	formLogin = zUI.MakeFormLogin(zLayout, zData, zDraw)
+	formLogin = MakeFormLogin(zUI, zLayout, zData, zDraw)
 	toolBar = zUI.MakeToolBar("toolBar")
 	statusBar = zUI.MakeStatusBarPan("statusBar", 6)
-	treeModel = zData.MakeTreeModel(zData.MakeAppRoot())
-	zData.AddMeta(treeModel)
+	treeModel = zData.MakeTreeModel(MakeAppRoot(zData))
+	AddMeta(zData, treeModel)
 	tree = zUI.MakeTree("tree", treeModel, true)
 	tree.SetSelectable(true)
 
 	go testAndLogin(&rootCanvas.Layoutable, chOk)
 
-	go zUI.MakeMainUI(zLayout, zData, zDraw, &rootCanvas.Layoutable, chOk)
+	go MakeMainUI(zUI, zLayout, zData, zDraw, &rootCanvas.Layoutable, chOk)
 
 }
 
 // MakeFormLogin -
-func (ui *zkit.PkgUI) MakeFormLogin(zLayout *zkit.PkgLayout, zData *zkit.PkgData, zDraw *zkit.PkgDraw) (form *Form) {
+func MakeFormLogin(zUI *zkit.PkgUI, zLayout *zkit.PkgLayout, zData *zkit.PkgData, zDraw *zkit.PkgDraw) (form *Form) {
 
-	form = NewForm(ui.MakeWindow("formLogin", "Login", nil), 300, 225, false)
+	form = NewForm(zUI.MakeWindow("formLogin", "Login", nil), 300, 225, false)
 
 	root := form.Root
 	status := form.Status
@@ -45,9 +45,9 @@ func (ui *zkit.PkgUI) MakeFormLogin(zLayout *zkit.PkgLayout, zData *zkit.PkgData
 
 	log.Printf("MakeFormLogin - user:%v", session.Data.User)
 
-	userLabel := ui.MakeLabel("userLabel", "User")
+	userLabel := zUI.MakeLabel("userLabel", "User")
 	root.Add("center", &userLabel.Layoutable)
-	userField := ui.MakeTextField("userField", session.Data.User)
+	userField := zUI.MakeTextField("userField", session.Data.User)
 	userField.SetHint("User name")
 	userField.SetPSByRowsCols(2, 20)
 	userField.SetTextAlignment("left")
@@ -55,9 +55,9 @@ func (ui *zkit.PkgUI) MakeFormLogin(zLayout *zkit.PkgLayout, zData *zkit.PkgData
 
 	form.Focus = &userField.Panel
 
-	pwdLabel := ui.MakeLabel("pwdLabel", "Password")
+	pwdLabel := zUI.MakeLabel("pwdLabel", "Password")
 	root.Add("center", &pwdLabel.Layoutable)
-	pwdField := ui.MakePassTextField("pwdField", session.Data.Secret, 10, false)
+	pwdField := zUI.MakePassTextField("pwdField", session.Data.Secret, 10, false)
 	pwdField.SetHint("Password")
 	pwdField.SetPSByRowsCols(2, 20)
 	pwdField.SetTextAlignment("left")
@@ -78,14 +78,14 @@ func (ui *zkit.PkgUI) MakeFormLogin(zLayout *zkit.PkgLayout, zData *zkit.PkgData
 		form.ChResult <- FormClose
 	}
 
-	buttonOK := ui.MakeButton("buttonOK", "OK")
+	buttonOK := zUI.MakeButton("buttonOK", "OK")
 	root.Add("center", &buttonOK.Layoutable)
 	buttonOK.Fired(fnOk)
 
 	status.Remove(status.Kids()[0])
 	status.SetFlowLayout("center", "center", "horizontal", 4)
 
-	statLabel := ui.MakeLabel("statLabel", "Ready")
+	statLabel := zUI.MakeLabel("statLabel", "Ready")
 	status.Add("center", &statLabel.Layoutable)
 
 	close := zkit.NewButton(buttons.Kids()[0])
@@ -106,12 +106,12 @@ func (ui *zkit.PkgUI) MakeFormLogin(zLayout *zkit.PkgLayout, zData *zkit.PkgData
 }
 
 // MakeMainUI -
-func (ui *zkit.PkgUI) MakeMainUI(zLayout *zkit.PkgLayout, zData *zkit.PkgData, zDraw *zkit.PkgDraw, root *zkit.Layoutable, ch chan bool) {
+func MakeMainUI(zUI *zkit.PkgUI, zLayout *zkit.PkgLayout, zData *zkit.PkgData, zDraw *zkit.PkgDraw, root *zkit.Layoutable, ch chan bool) {
 	b := <-ch
 
 	if b {
 
-		err := ui.RefreshTree(zData)
+		err := RefreshTree(zUI, zData)
 		if err != nil {
 			log.Printf("Refresh tree error: %v", err)
 			return
@@ -120,10 +120,10 @@ func (ui *zkit.PkgUI) MakeMainUI(zLayout *zkit.PkgLayout, zData *zkit.PkgData, z
 		fillToolBar(toolBar)
 
 		statusBar.SetBackground("lightgrey")
-		statusText := ui.MakeLabel("statusText", "Ready")
+		statusText := zUI.MakeLabel("statusText", "Ready")
 		statusBar.Add("left", &statusText.Layoutable)
 
-		defViews := ui.MakeDefViews()
+		defViews := zUI.MakeDefViews()
 		defViews.SetView(func(t *js.Object, i *js.Object) (v *js.Object) {
 			name := zkit.NewItem(i).Value().Get("name").String()
 			v = zDraw.MakeStringRender(name).Object()
@@ -148,20 +148,20 @@ func (ui *zkit.PkgUI) MakeMainUI(zLayout *zkit.PkgLayout, zData *zkit.PkgData, z
 			for i := range ks {
 				log.Println(i, ks[i].Get("id").String(), ks[i].Get("state").String())
 				if ks[i].Get("state").String() == "over" {
-					ui.DispatchToolBarEvent(zData, ks[i].Get("id").String())
+					DispatchToolBarEvent(zUI, zData, ks[i].Get("id").String())
 				}
 			}
 		})
 
 		//textArea1 := ui.MakeTextArea("textArea1", "A text1 ... ")
 		//textArea2 := ui.MakeTextArea("textArea2", "A text2 ... ")
-		tabs = ui.MakeTabs("tabs", "top")
+		tabs = zUI.MakeTabs("tabs", "top")
 		//tabs.Add("Text1", &textArea1.Layoutable)
 		//tabs.Add("Text2", &textArea2.Layoutable)
 
-		scrollTreePan := ui.MakeScrollPan("treeScrollPan", &tree.Panel, "vertical", true)
+		scrollTreePan := zUI.MakeScrollPan("treeScrollPan", &tree.Panel, "vertical", true)
 
-		splitPan := ui.MakeSplitPan("splitPan", &scrollTreePan.Panel, &tabs.Panel, "vertical")
+		splitPan := zUI.MakeSplitPan("splitPan", &scrollTreePan.Panel, &tabs.Panel, "vertical")
 		splitPan.SetLeftMinSize(250)
 		splitPan.SetRightMinSize(250)
 		splitPan.SetGripperLoc(300)
@@ -192,17 +192,17 @@ func (ui *zkit.PkgUI) MakeMainUI(zLayout *zkit.PkgLayout, zData *zkit.PkgData, z
 }
 
 // DispatchToolBarEvent -
-func (ui *zkit.PkgUI) DispatchToolBarEvent(zData *zkit.PkgData, id string) {
+func DispatchToolBarEvent(zUI *zkit.PkgUI, zData *zkit.PkgData, id string) {
 	switch id {
 	case "tbRefresh":
-		go ui.RefreshTree(zData)
+		go RefreshTree(zUI, zData)
 	case "tbRun":
-		go ui.DispatchQuery(zData)
+		go DispatchQuery(zUI, zData)
 	}
 }
 
 // DispatchQuery -
-func (ui *zkit.PkgUI) DispatchQuery(zData *zkit.PkgData) {
+func DispatchQuery(zUI *zkit.PkgUI, zData *zkit.PkgData) {
 	item := findItemInTreeModel(treeModel, session.Data.Item)
 	if item == nil {
 		return
@@ -246,14 +246,14 @@ func (ui *zkit.PkgUI) DispatchQuery(zData *zkit.PkgData) {
 			log.Println("DispatchQuery error:", err)
 			return
 		}
-		ui.MakeQryTabGrid(name, srcMap, viewMap, respMap)
+		MakeQryTabGrid(zUI, name, srcMap, viewMap, respMap)
 	default:
 		return
 	}
 }
 
 // MakeQryTabGrid -response
-func (ui *zkit.PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, view map[string]interface{}, resp map[string]interface{}) {
+func MakeQryTabGrid(zUI *zkit.PkgUI, name string, src map[string]interface{}, view map[string]interface{}, resp map[string]interface{}) {
 
 	result, ok := resp["result"].([]interface{})
 	if !ok {
@@ -283,11 +283,11 @@ func (ui *zkit.PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, vi
 
 	obj := rootCanvas.ByPath("#"+name, nil)
 	if obj == nil {
-		grid := ui.MakeGrid(name, a)
-		gridStrPan := ui.MakeGridStretchPan(name+"StretchPan", grid)
-		gridCaption := ui.MakeGridCaption(name+"Caption", titles)
+		grid := zUI.MakeGrid(name, a)
+		gridStrPan := zUI.MakeGridStretchPan(name+"StretchPan", grid)
+		gridCaption := zUI.MakeGridCaption(name+"Caption", titles)
 		grid.Add("top", &gridCaption.Layoutable)
-		scrollPan := ui.MakeScrollPan(name+"ScrollPan", &gridStrPan.Panel, "vertical", true)
+		scrollPan := zUI.MakeScrollPan(name+"ScrollPan", &gridStrPan.Panel, "vertical", true)
 		tabs.Add(name, &scrollPan.Layoutable)
 	} else {
 		zkit.NewGrid(obj).SetModel(a)
@@ -295,7 +295,7 @@ func (ui *zkit.PkgUI) MakeQryTabGrid(name string, src map[string]interface{}, vi
 }
 
 // RefreshTree -
-func (ui *zkit.PkgUI) RefreshTree(zData *zkit.PkgData) (err error) {
+func RefreshTree(zUI *zkit.PkgUI, zData *zkit.PkgData) (err error) {
 	r := `{
 		"request": {
 			"command": "export",
@@ -331,9 +331,9 @@ func (ui *zkit.PkgUI) RefreshTree(zData *zkit.PkgData) (err error) {
 	session.Data.Meta = meta
 	session.Save()
 
-	treeModel = zData.MakeTreeModel(zData.MakeAppRoot())
-	zData.AddMeta(treeModel)
-	zData.AddObjects(treeModel)
+	treeModel = zData.MakeTreeModel(MakeAppRoot(zData))
+	AddMeta(zData, treeModel)
+	AddObjects(zData, treeModel)
 	tree.SetModel(treeModel)
 	//tree.Invalidate()
 	if len(session.Data.Item) > 0 {
@@ -346,25 +346,25 @@ func (ui *zkit.PkgUI) RefreshTree(zData *zkit.PkgData) (err error) {
 }
 
 // MakeAppRoot -
-func (data *zkit.PkgData) MakeAppRoot() (r *zkit.Item) {
-	r = data.MakeItem(
+func MakeAppRoot(zData *zkit.PkgData) (r *zkit.Item) {
+	r = zData.MakeItem(
 		js.M{"name": "Application", "type": "app"},
 	)
 	return
 }
 
 // AddMeta -
-func (data *zkit.PkgData) AddMeta(model *zkit.TreeModel) (err error) {
+func AddMeta(zData *zkit.PkgData, model *zkit.TreeModel) (err error) {
 	root := model.Root()
-	meta := data.MakeItem(
+	meta := zData.MakeItem(
 		js.M{"name": "Meta", "type": "section"},
 	)
 	model.Add(root, meta)
 
-	traits := data.MakeItem(
+	traits := zData.MakeItem(
 		js.M{"name": "Traits", "type": "section"},
 	)
-	relations := data.MakeItem(
+	relations := zData.MakeItem(
 		js.M{"name": "Relations", "type": "section"},
 	)
 	model.Add(meta, traits)
@@ -375,15 +375,15 @@ func (data *zkit.PkgData) AddMeta(model *zkit.TreeModel) (err error) {
 		return
 	}
 
-	data.AddTraits(model, traits, body)
-	data.AddRelations(model, relations, body)
+	AddTraits(zData, model, traits, body)
+	AddRelations(zData, model, relations, body)
 	return
 }
 
 // AddObjects -
-func (data *zkit.PkgData) AddObjects(model *zkit.TreeModel) (err error) {
+func AddObjects(zData *zkit.PkgData, model *zkit.TreeModel) (err error) {
 	root := model.Root()
-	objects := data.MakeItem(
+	objects := zData.MakeItem(
 		js.M{"name": "Objects", "type": "section"},
 	)
 	model.Add(root, objects)
@@ -399,7 +399,7 @@ func (data *zkit.PkgData) AddObjects(model *zkit.TreeModel) (err error) {
 		if !ok {
 			name = "Noname"
 		}
-		item := data.MakeItem(
+		item := zData.MakeItem(
 			js.M{"name": name, "type": "obj-query", "data": v},
 		)
 		model.Add(objects, item)
@@ -409,7 +409,7 @@ func (data *zkit.PkgData) AddObjects(model *zkit.TreeModel) (err error) {
 }
 
 // AddTraits -
-func (data *zkit.PkgData) AddTraits(model *zkit.TreeModel, traits *zkit.Item, body map[string]interface{}) (err error) {
+func AddTraits(zData *zkit.PkgData, model *zkit.TreeModel, traits *zkit.Item, body map[string]interface{}) (err error) {
 	a, ok := body["traits"].([]interface{})
 	if !ok {
 		return
@@ -420,7 +420,7 @@ func (data *zkit.PkgData) AddTraits(model *zkit.TreeModel, traits *zkit.Item, bo
 		if !ok {
 			name = "Noname"
 		}
-		item := data.MakeItem(
+		item := zData.MakeItem(
 			js.M{"name": name, "type": "trait", "data": v},
 		)
 		model.Add(traits, item)
@@ -429,7 +429,7 @@ func (data *zkit.PkgData) AddTraits(model *zkit.TreeModel, traits *zkit.Item, bo
 }
 
 // AddRelations -
-func (data *zkit.PkgData) AddRelations(model *zkit.TreeModel, relations *zkit.Item, body map[string]interface{}) (err error) {
+func AddRelations(zdata *zkit.PkgData, model *zkit.TreeModel, relations *zkit.Item, body map[string]interface{}) (err error) {
 	a, ok := body["relations"].([]interface{})
 	if !ok {
 		return
@@ -440,7 +440,7 @@ func (data *zkit.PkgData) AddRelations(model *zkit.TreeModel, relations *zkit.It
 		if !ok {
 			name = "Noname"
 		}
-		item := data.MakeItem(
+		item := zdata.MakeItem(
 			js.M{"name": name, "type": "relation", "data": v},
 		)
 		model.Add(relations, item)

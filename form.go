@@ -27,7 +27,7 @@ type Form struct {
 }
 
 // NewForm -
-func NewForm(win *zkit.Window, w int, h int, sizeable bool) (form *zkit.Form) {
+func NewForm(win *zkit.Window, w int, h int, sizeable bool) (form *Form) {
 	//win := NewWindow(obj)
 	win.Layoutable.SetSize(w, h)
 	win.SetSizeable(sizeable)
